@@ -4,6 +4,8 @@ import { useState } from "react";
 // @ts-ignore
 import { supabase } from "../../lib/supabaseClient";
 import Sidebar from "../components/Sidebar";
+import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -272,33 +274,59 @@ function AddSalesCallModal({ onClose }: { onClose: () => void }) {
   const [description, setDescription] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const { user } = useUser();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    if (!audioFile) return;
+    if (!audioFile || !user) return;
 
     setLoading(true);
 
-    const fileExt = audioFile.name.split(".").pop();
-    const fileName = `${crypto.randomUUID()}.${fileExt}`;
-    const filePath = `recordings/${fileName}`;
+    try {
+      // 1. Upload to Supabase
+      const fileExt = audioFile.name.split(".").pop();
+      const fileName = `${crypto.randomUUID()}.${fileExt}`;
+      const filePath = `recordings/${fileName}`;
 
-    const { error } = await supabase.storage
-      .from("delasales_audio")
-      .upload(filePath, audioFile);
+      const { error } = await supabase.storage
+        .from("delasales_audio")
+        .upload(filePath, audioFile);
 
-    if (error) {
-      console.error(error);
-      alert("Upload failed");
+      if (error) throw error;
+
+      const audioUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/delasales_audio/${filePath}`;
+
+      const res = await fetch("/api/recordings/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clerkUserId: user.id,
+          title,
+          audioUrl,
+          dateTime: new Date().toISOString(),
+          durationMinutes: null,
+          participants: [],
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to create recording");
+      }
+
+      const data = await res.json();
+
+      if (!data?.recording?._id) {
+        throw new Error("Recording ID missing");
+      }
+
+      router.push(`/dashboard/recordings/${data.recording._id}`);
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    console.log("Uploaded to:", filePath);
-
-    setLoading(false);
-    onClose();
   }
 
   return (
@@ -354,7 +382,6 @@ function AddSalesCallModal({ onClose }: { onClose: () => void }) {
     </div>
   );
 }
-
 
 function FileUpload({
   file,
