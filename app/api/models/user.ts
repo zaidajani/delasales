@@ -1,12 +1,51 @@
-import mongoose, { Document, Model, Schema } from 'mongoose';
+import mongoose from "mongoose";
 
-const userSchema: Schema = new Schema({
-  clerkUserId: { type: String, required: true, unique: true, index: true },
-  email: { type: String, required: true, lowercase: true },
-  name: { type: String, required: false },
-  imageUrl: { type: String, required: false },
-}, { timestamps: true });
+const RecordingSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true },
+    audioUrl: { type: String, required: true },
 
-const User: Model<Document> = mongoose.models.User || mongoose.model('User', userSchema);
+    dateTime: { type: Date, required: true },
+    durationMinutes: { type: Number },
 
-export default User;
+    participants: [{ type: String }],
+
+    transcript: { type: String },
+
+    actionItems: [
+      {
+        text: String,
+        completed: { type: Boolean, default: false },
+      },
+    ],
+
+    risks: [
+      {
+        title: String,
+        description: String,
+      },
+    ],
+
+    status: {
+      type: String,
+      enum: ["processing", "completed"],
+      default: "processing",
+    },
+  },
+  { timestamps: true }
+);
+
+const UserSchema = new mongoose.Schema(
+  {
+    clerkUserId: { type: String, required: true, unique: true },
+    email: { type: String, required: true },
+    name: String,
+    imageUrl: String,
+
+    recordings: [RecordingSchema], // 👈 IMPORTANT
+  },
+  { timestamps: true }
+);
+
+export default mongoose.models.User ||
+  mongoose.model("User", UserSchema);
