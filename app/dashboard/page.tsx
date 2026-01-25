@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 // @ts-ignore
+import { supabase } from "../../lib/supabaseClient";
 import Sidebar from "../components/Sidebar";
 import {
   Chart as ChartJS,
@@ -267,76 +268,138 @@ function TaskStatus({
 /* ---------------- Modal ---------------- */
 
 function AddSalesCallModal({ onClose }: { onClose: () => void }) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!audioFile) return;
+
+    setLoading(true);
+
+    const fileExt = audioFile.name.split(".").pop();
+    const fileName = `${crypto.randomUUID()}.${fileExt}`;
+    const filePath = `recordings/${fileName}`;
+
+    const { error } = await supabase.storage
+      .from("delasales_audio")
+      .upload(filePath, audioFile);
+
+    if (error) {
+      console.error(error);
+      alert("Upload failed");
+      setLoading(false);
+      return;
+    }
+
+    console.log("Uploaded to:", filePath);
+
+    setLoading(false);
+    onClose();
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm cursor-pointer"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
 
       <div className="relative w-full max-w-lg bg-white rounded-xl shadow-xl border border-gray-200 p-6">
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-900">
-            Add new sales call
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Upload a recording and provide meeting details
-          </p>
-        </div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          Add new sales call
+        </h2>
 
-        <form className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Meeting title
-            </label>
-            <input
-              type="text"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-gray-900 outline-none"
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Meeting title"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            required
+          />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Meeting description
-            </label>
-            <textarea
-              rows={3}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-gray-900 outline-none"
-            />
-          </div>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Meeting description"
+            rows={3}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none"
+          />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Audio recording
-            </label>
-            <input
-              type="file"
-              accept="audio/*"
-              className="cursor-pointer block w-full text-sm text-gray-600
-                file:mr-4 file:rounded-lg file:border-0
-                file:bg-gray-100 file:px-4 file:py-2
-                file:text-sm file:font-medium
-                hover:file:bg-gray-200"
-            />
-          </div>
+          <FileUpload file={audioFile} onChange={setAudioFile} />
 
           <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="cursor-pointer text-sm font-medium text-gray-600 hover:text-gray-900"
+              className="text-sm text-gray-600"
             >
               Cancel
             </button>
+
             <button
               type="submit"
-              className="cursor-pointer bg-gray-900 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-800 transition"
+              disabled={!audioFile || loading}
+              className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm disabled:opacity-50"
             >
-              Create sales call
+              {loading ? "Uploading..." : "Create sales call"}
             </button>
           </div>
         </form>
       </div>
     </div>
+  );
+}
+
+
+function FileUpload({
+  file,
+  onChange,
+}: {
+  file: File | null;
+  onChange: (file: File | null) => void;
+}) {
+  const MAX_SIZE_MB = 40;
+
+  function handleFileSelect(selectedFile: File | null) {
+    if (!selectedFile) {
+      onChange(null);
+      return;
+    }
+
+    const sizeInMB = selectedFile.size / (1024 * 1024);
+
+    if (sizeInMB > MAX_SIZE_MB) {
+      alert("File size must be under 40 MB");
+      return;
+    }
+
+    onChange(selectedFile);
+  }
+
+  return (
+    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-gray-400 transition bg-gray-50">
+      <div className="flex flex-col items-center justify-center text-center px-4">
+        <p className="text-sm font-medium text-gray-900">
+          {file ? file.name : "Upload audio recording"}
+        </p>
+        <p className="text-xs text-gray-500 mt-1">
+          {file
+            ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+            : "MP3, M4A, WAV • up to 40MB"}
+        </p>
+      </div>
+
+      <input
+        type="file"
+        accept="audio/*"
+        className="hidden"
+        onChange={(e) => handleFileSelect(e.target.files?.[0] || null)}
+      />
+    </label>
   );
 }
