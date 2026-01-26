@@ -28,8 +28,6 @@ export default async function ProductSyncPage({
 
   return (
     <div className="h-screen flex bg-[#f7f8fa] text-gray-900">
-      <Sidebar activeItem="product-sync" />
-
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="px-12 pt-6 pb-5 bg-[#f7f8fa] border-b border-gray-200">

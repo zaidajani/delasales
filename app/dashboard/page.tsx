@@ -32,8 +32,6 @@ export default function DashboardPage() {
 
   return (
     <div className="h-screen flex bg-gray-50">
-      <Sidebar activeItem="dashboard" />
-
       <main className="flex-1 overflow-y-auto p-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -319,6 +317,10 @@ function AddSalesCallModal({ onClose }: { onClose: () => void }) {
       if (!data?.recording?._id) {
         throw new Error("Recording ID missing");
       }
+
+      window.dispatchEvent(new Event("recordings-updated"));
+
+      router.push(`/dashboard/recordings/${data.recording._id}`);
 
       router.push(`/dashboard/recordings/${data.recording._id}`);
     } catch (err) {

@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     if (!clerkUserId || !title || !audioUrl || !dateTime) {
       return NextResponse.json(
         { error: "Missing required fields" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
@@ -33,13 +33,18 @@ export async function POST(request: Request) {
 
     const audioBlob = await audioResponse.blob();
 
+    const audioFile = new File([audioBlob], "recording.mp3", {
+      type: audioBlob.type || "audio/mpeg",
+    });
+
     /* ---------------------------------
-       2. Send Blob to Lemonfox
+       2. Send audio to Lemonfox (DIARIZATION)
     --------------------------------- */
     const formData = new FormData();
-    formData.append("file", audioBlob, "recording.mp3");
+    formData.append("file", audioFile);
     formData.append("language", "english");
-    formData.append("response_format", "json");
+    formData.append("speaker_labels", "true");
+    formData.append("response_format", "verbose_json");
 
     const transcriptionRes = await fetch(
       "https://api.lemonfox.ai/v1/audio/transcriptions",
@@ -49,17 +54,30 @@ export async function POST(request: Request) {
           Authorization: `Bearer ${process.env.LEMONFOX_API_KEY}`,
         },
         body: formData,
-      },
+      }
     );
+
+    if (!transcriptionRes.ok) {
+      const errText = await transcriptionRes.text();
+      console.error("LEMONFOX ERROR:", errText);
+      throw new Error("Lemonfox transcription failed");
+    }
 
     const transcriptionData = await transcriptionRes.json();
 
-    if (!transcriptionData?.text) {
-      throw new Error("Transcription failed");
+    if (!transcriptionData?.segments?.length) {
+      throw new Error("Diarization failed (no segments)");
     }
 
     /* ---------------------------------
-       3. Build recording object
+       3. Build speaker-labeled transcript
+    --------------------------------- */
+    const transcript = transcriptionData.segments
+      .map((seg: any) => `${seg.speaker}: ${seg.text}`)
+      .join("\n");
+
+    /* ---------------------------------
+       4. Build recording object
     --------------------------------- */
     const recording = {
       title,
@@ -67,41 +85,41 @@ export async function POST(request: Request) {
       dateTime,
       durationMinutes,
       participants,
-      transcript: transcriptionData.text,
+      transcript,
+      diarization: transcriptionData.segments, // optional but powerful
       status: "completed",
     };
 
     /* ---------------------------------
-       4. Save recording in MongoDB
+       5. Save recording in MongoDB
     --------------------------------- */
     const user = await User.findOneAndUpdate(
       { clerkUserId },
       { $push: { recordings: recording } },
-      { new: true },
+      { new: true }
     );
 
     if (!user || !user.recordings.length) {
       return NextResponse.json(
-        { error: "User not found or recording failed" },
-        { status: 404 },
+        { error: "User not found or recording save failed" },
+        { status: 404 }
       );
     }
 
-    // ✅ Get the ACTUAL saved recording (with _id)
     const savedRecording = user.recordings[user.recordings.length - 1];
 
     return NextResponse.json(
       {
-        message: "Recording added and transcription saved",
+        message: "Recording added with diarized transcript",
         recording: savedRecording,
       },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error) {
     console.error("ADD RECORDING ERROR:", error);
     return NextResponse.json(
       { error: "Failed to add recording" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
