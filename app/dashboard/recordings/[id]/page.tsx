@@ -1,4 +1,5 @@
 import Sidebar from "@/app/components/Sidebar";
+import TranscriptViewer from "@/app/components/EntireTranscript";
 
 async function getRecording(id: string) {
   const res = await fetch(
@@ -16,7 +17,6 @@ async function getRecording(id: string) {
   return res.json();
 }
 
-
 export default async function ProductSyncPage({
   params,
 }: {
@@ -28,6 +28,7 @@ export default async function ProductSyncPage({
 
   return (
     <div className="h-screen flex bg-[#f7f8fa] text-gray-900">
+
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="px-12 pt-6 pb-5 bg-[#f7f8fa] border-b border-gray-200">
@@ -106,18 +107,11 @@ export default async function ProductSyncPage({
                 {/* Transcript */}
                 <section className="space-y-5">
                   <h2 className="text-lg font-semibold">
-                    Transcript Reference
+                    Full Transcript
                   </h2>
 
-                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4 text-sm">
-                    <p className="text-gray-700">
-                      <strong>Sarah:</strong> We really need to get the Q3
-                      budget finalized.
-                    </p>
-                    <p className="pl-4 border-l-4 border-blue-500 text-gray-900">
-                      <strong>You:</strong> I’ll take care of that by Friday.
-                    </p>
-                  </div>
+                  {/* ✅ ONLY CHANGE HERE */}
+                  <TranscriptViewer transcript={recording.transcript} />
                 </section>
               </div>
 
@@ -155,7 +149,7 @@ export default async function ProductSyncPage({
   );
 }
 
-/* ---------- INLINE HELPERS ---------- */
+/* ---------- INLINE HELPERS (UNCHANGED) ---------- */
 
 function TaskRow({ title, meta, badge, badgeColor, completed }: any) {
   return (

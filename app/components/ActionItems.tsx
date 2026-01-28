@@ -1,33 +1,52 @@
-export default function ActionItems() {
+interface TaskItem {
+  title: string;
+  meta?: string;
+  tag?: { label: string; color: "orange" | "blue" };
+  completed?: boolean;
+}
+
+interface ActionItemsProps {
+  title?: string;
+  pendingCount?: number;
+  tasks?: TaskItem[];
+}
+
+export default function ActionItems({
+  title = "Your Action Items",
+  pendingCount = 3,
+  tasks = [
+    {
+      title: "Finalize the Q3 budget spreadsheet",
+      meta: "Fri, 5 PM",
+      tag: { label: "Hard Deadline", color: "orange" },
+    },
+    {
+      title: "Update slide deck with new user metrics",
+      meta: "Next Mon",
+      tag: { label: "Soft Commitment", color: "blue" },
+    },
+    {
+      title: "Send invite to creative team",
+      completed: true,
+    },
+  ],
+}: ActionItemsProps) {
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold text-gray-900">
-          Your Action Items
+          {title}
         </h2>
 
         <span className="text-xs font-medium text-gray-500">
-          3 Pending
+          {pendingCount} Pending
         </span>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 divide-y">
-        <Task
-          title="Finalize the Q3 budget spreadsheet"
-          meta="Fri, 5 PM"
-          tag={{ label: "Hard Deadline", color: "orange" }}
-        />
-
-        <Task
-          title="Update slide deck with new user metrics"
-          meta="Next Mon"
-          tag={{ label: "Soft Commitment", color: "blue" }}
-        />
-
-        <Task
-          title="Send invite to creative team"
-          completed
-        />
+        {tasks.map((task, index) => (
+          <Task key={index} {...task} />
+        ))}
       </div>
     </section>
   );

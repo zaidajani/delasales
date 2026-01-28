@@ -1,22 +1,39 @@
-export default function ClientSteps() {
+interface StepItem {
+  title: string;
+  meta?: string;
+  tag?: string;
+}
+
+interface ClientStepsProps {
+  title?: string;
+  steps?: StepItem[];
+}
+
+export default function ClientSteps({
+  title = "Client Steps",
+  steps = [
+    {
+      title: "Approve wireframes",
+      meta: "Sarah (Client)",
+      tag: "Dependency",
+    },
+    {
+      title: "Access to analytics",
+      meta: "Needed by Friday",
+    },
+  ],
+}: ClientStepsProps) {
   return (
     <section className="space-y-4">
       <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-purple-500" />
-        Client Steps
+        {title}
       </h2>
 
       <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
-        <Step
-          title="Approve wireframes"
-          meta="Sarah (Client)"
-          tag="Dependency"
-        />
-
-        <Step
-          title="Access to analytics"
-          meta="Needed by Friday"
-        />
+        {steps.map((step, index) => (
+          <Step key={index} {...step} />
+        ))}
       </div>
     </section>
   );
