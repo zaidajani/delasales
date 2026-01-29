@@ -31,8 +31,14 @@ const RecordingSchema = new mongoose.Schema(
       enum: ["processing", "completed"],
       default: "processing",
     },
+
+    // 👇 NEW FIELD
+    isAnalyzed: {
+      type: Boolean,
+      default: false,
+    },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const UserSchema = new mongoose.Schema(
@@ -42,10 +48,9 @@ const UserSchema = new mongoose.Schema(
     name: String,
     imageUrl: String,
 
-    recordings: [RecordingSchema], // 👈 IMPORTANT
+    recordings: [RecordingSchema],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-export default mongoose.models.User ||
-  mongoose.model("User", UserSchema);
+export default mongoose.models.User || mongoose.model("User", UserSchema);

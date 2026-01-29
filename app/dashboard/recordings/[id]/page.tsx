@@ -1,12 +1,10 @@
-import Sidebar from "@/app/components/Sidebar";
 import TranscriptViewer from "@/app/components/EntireTranscript";
+import TranscriptPreview from "@/app/components/TranscriptPreview";
 
 async function getRecording(id: string) {
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_APP_URL}/api/recordings/${id}`,
-    {
-      cache: "no-store",
-    }
+    { cache: "no-store" },
   );
 
   if (!res.ok) {
@@ -23,12 +21,86 @@ export default async function ProductSyncPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-
   const recording = await getRecording(id);
 
+  /* ======================================================
+     🔶 STATE 1 — NOT ANALYSED
+  ====================================================== */
+  if (!recording.isAnalyzed) {
+    return (
+      <main className="flex-1 overflow-y-auto bg-white">
+        <div className="max-w-4xl mx-auto px-10 py-12">
+          {/* Header */}
+          <header className="mb-10">
+            <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+              <span>Yesterday</span>
+              <span>&bull;</span>
+              <span>19:10</span>
+            </div>
+            <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
+              {recording.title}
+            </h1>
+          </header>
+
+          <div className="grid grid-cols-1 gap-12">
+            {/* Transcription */}
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-medium text-gray-900">
+                  Transcription
+                </h2>
+                <span className="text-sm text-gray-400">
+                  {recording.durationMinutes
+                    ? `${recording.durationMinutes} min`
+                    : ""}
+                </span>
+              </div>
+
+              <TranscriptPreview transcript={recording.transcript} />
+            </section>
+
+            <hr className="border-gray-100" />
+
+            {/* Analysis Section */}
+            <section className="space-y-6">
+              <div className="flex items-center gap-3 bg-amber-50 text-amber-900 px-4 py-3 rounded-lg border border-amber-100/50 w-fit">
+                <span className="text-sm font-medium">
+                  Transcription is not analysed
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-gray-700">
+                  Analysis instruction
+                </label>
+
+                <textarea
+                  rows={4}
+                  className="w-full rounded-lg border border-gray-200 bg-white p-4 text-base text-gray-900 placeholder-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 shadow-sm resize-none"
+                  placeholder="e.g. Identify the customer's main objections and the agreed next steps..."
+                />
+
+                <p className="text-sm text-gray-500">
+                  Provide specific instructions on what you want the AI to focus
+                  on during the analysis.
+                </p>
+              </div>
+
+              <button className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white text-base font-medium px-5 py-2.5 rounded-lg shadow-sm">
+                Analyse transcription
+              </button>
+            </section>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  /* ======================================================
+     🟢 STATE 2 — ANALYSED (ORIGINAL DASHBOARD)
+  ====================================================== */
   return (
     <div className="h-screen flex bg-[#f7f8fa] text-gray-900">
-
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="px-12 pt-6 pb-5 bg-[#f7f8fa] border-b border-gray-200">
@@ -85,7 +157,6 @@ export default async function ProductSyncPage({
 
             {/* Two Column */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-              {/* Left */}
               <div className="lg:col-span-2 space-y-14">
                 {/* Client Steps */}
                 <section className="space-y-5">
@@ -106,11 +177,7 @@ export default async function ProductSyncPage({
 
                 {/* Transcript */}
                 <section className="space-y-5">
-                  <h2 className="text-lg font-semibold">
-                    Full Transcript
-                  </h2>
-
-                  {/* ✅ ONLY CHANGE HERE */}
+                  <h2 className="text-lg font-semibold">Full Transcript</h2>
                   <TranscriptViewer transcript={recording.transcript} />
                 </section>
               </div>
@@ -149,20 +216,22 @@ export default async function ProductSyncPage({
   );
 }
 
-/* ---------- INLINE HELPERS (UNCHANGED) ---------- */
+/* ======================================================
+   INLINE HELPERS (UNCHANGED)
+====================================================== */
 
 function TaskRow({ title, meta, badge, badgeColor, completed }: any) {
   return (
     <div className="flex gap-4 px-6 py-5 border-b last:border-b-0 border-gray-100">
       <input type="checkbox" defaultChecked={completed} />
-
       <div className="flex-1">
         <p
-          className={`text-sm ${completed ? "line-through text-gray-400" : "font-medium"}`}
+          className={`text-sm ${
+            completed ? "line-through text-gray-400" : "font-medium"
+          }`}
         >
           {title}
         </p>
-
         {(badge || meta) && (
           <div className="mt-2 flex items-center gap-3 text-xs">
             {badge && (
