@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params; // 🔑 REQUIRED
+    const { id } = await params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
@@ -21,9 +21,13 @@ export async function GET(
 
     const recordingId = new mongoose.Types.ObjectId(id);
 
+    // 🔍 Find the user who owns this recording
     const user = await User.findOne(
       { "recordings._id": recordingId },
-      { "recordings.$": 1 }
+      {
+        clerkUserId: 1,      // 👈 INCLUDE OWNER
+        recordings: { $elemMatch: { _id: recordingId } },
+      }
     );
 
     if (!user || !user.recordings?.length) {
@@ -33,7 +37,16 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(user.recordings[0], { status: 200 });
+    const recording = user.recordings[0];
+
+    // ✅ Re-attach ownership info explicitly
+    return NextResponse.json(
+      {
+        ...recording.toObject(),
+        clerkUserId: user.clerkUserId,
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("GET RECORDING ERROR:", error);
     return NextResponse.json(

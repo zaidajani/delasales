@@ -1,5 +1,6 @@
 import TranscriptViewer from "@/app/components/EntireTranscript";
 import TranscriptPreview from "@/app/components/TranscriptPreview";
+import AnalyseAction from "@/app/components/AnalyzeAction";
 
 async function getRecording(id: string) {
   const res = await fetch(
@@ -8,8 +9,9 @@ async function getRecording(id: string) {
   );
 
   if (!res.ok) {
-    console.error("API STATUS:", res.status);
-    throw new Error("Failed to fetch recording");
+    const err = await res.json();
+    console.error("RECORDING FETCH ERROR:", err);
+    throw new Error(err.error || "Failed to fetch recording");
   }
 
   return res.json();
@@ -62,34 +64,11 @@ export default async function ProductSyncPage({
             <hr className="border-gray-100" />
 
             {/* Analysis Section */}
-            <section className="space-y-6">
-              <div className="flex items-center gap-3 bg-amber-50 text-amber-900 px-4 py-3 rounded-lg border border-amber-100/50 w-fit">
-                <span className="text-sm font-medium">
-                  Transcription is not analysed
-                </span>
-              </div>
-
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-gray-700">
-                  Analysis instruction
-                </label>
-
-                <textarea
-                  rows={4}
-                  className="w-full rounded-lg border border-gray-200 bg-white p-4 text-base text-gray-900 placeholder-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 shadow-sm resize-none"
-                  placeholder="e.g. Identify the customer's main objections and the agreed next steps..."
-                />
-
-                <p className="text-sm text-gray-500">
-                  Provide specific instructions on what you want the AI to focus
-                  on during the analysis.
-                </p>
-              </div>
-
-              <button className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white text-base font-medium px-5 py-2.5 rounded-lg shadow-sm">
-                Analyse transcription
-              </button>
-            </section>
+            {/* Analysis Section */}
+            <AnalyseAction
+              clerkUserId={recording.clerkUserId}
+              recordingId={recording._id}
+            />
           </div>
         </div>
       </main>

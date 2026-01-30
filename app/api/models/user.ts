@@ -14,7 +14,14 @@ const RecordingSchema = new mongoose.Schema(
 
     actionItems: [
       {
-        text: String,
+        text: { type: String, required: true },
+
+        category: {
+          type: String,
+          enum: ["client", "seller"],
+          required: true,
+        },
+
         completed: { type: Boolean, default: false },
       },
     ],
