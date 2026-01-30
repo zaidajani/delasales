@@ -86,13 +86,35 @@ export default async function ProductSyncPage({
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">
-                Product Sync
+                {recording.title}
               </h1>
 
               <div className="mt-2 flex items-center gap-5 text-sm text-gray-500">
-                <span>3 Tasks</span>
-                <span>2 Email Opportunities</span>
-                <span className="text-gray-400">Sarah, Mike, Alex</span>
+                {/* ✅ Seller tasks (pending) */}
+                <span>
+                  {
+                    recording.actionItems.filter(
+                      (item: any) =>
+                        item.category === "seller" && !item.completed,
+                    ).length
+                  }{" "}
+                  Tasks
+                </span>
+
+                {/* ✅ Email opportunities = client steps + 1 */}
+                <span>
+                  {recording.actionItems.filter(
+                    (item: any) => item.category === "client",
+                  ).length + 1}{" "}
+                  Email Opportunities
+                </span>
+
+                {/* ✅ Participants from DB */}
+                {recording.participants?.length > 0 && (
+                  <span className="text-gray-400">
+                    {recording.participants.join(", ")}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -114,23 +136,35 @@ export default async function ProductSyncPage({
             <section className="space-y-5">
               <div className="flex items-center justify-between mt-10">
                 <h2 className="text-lg font-semibold">Your Action Items</h2>
-                <span className="text-sm text-gray-500">3 Pending</span>
+                <span className="text-sm text-gray-500">
+                  {
+                    recording.actionItems.filter(
+                      (item: any) =>
+                        item.category === "seller" && !item.completed,
+                    ).length
+                  }{" "}
+                  Pending
+                </span>
               </div>
 
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                <TaskRow
-                  title="Finalize the Q3 budget spreadsheet"
-                  badge="Hard Deadline"
-                  badgeColor="orange"
-                  meta="Fri, 5 PM"
-                />
-                <TaskRow
-                  title="Update slide deck with new user metrics"
-                  badge="Soft Commitment"
-                  badgeColor="blue"
-                  meta="Next Mon"
-                />
-                <TaskRow title="Send invite to creative team" completed />
+                {recording.actionItems
+                  .filter((item: any) => item.category === "seller")
+                  .map((item: any, idx: number) => (
+                    <TaskRow
+                      key={idx}
+                      title={item.text}
+                      completed={item.completed}
+                    />
+                  ))}
+
+                {recording.actionItems.filter(
+                  (item: any) => item.category === "seller",
+                ).length === 0 && (
+                  <p className="px-6 py-5 text-sm text-gray-400">
+                    No seller action items identified.
+                  </p>
+                )}
               </div>
             </section>
 
@@ -138,19 +172,24 @@ export default async function ProductSyncPage({
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
               <div className="lg:col-span-2 space-y-14">
                 {/* Client Steps */}
+                {/* Client Steps */}
                 <section className="space-y-5">
                   <h2 className="text-lg font-semibold">Client Steps</h2>
 
                   <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-5">
-                    <ClientStep
-                      title="Approve wireframes"
-                      meta="Sarah (Client)"
-                      tag="Dependency"
-                    />
-                    <ClientStep
-                      title="Access to analytics"
-                      meta="Needed by Friday"
-                    />
+                    {recording.actionItems
+                      .filter((item: any) => item.category === "client")
+                      .map((item: any, idx: number) => (
+                        <ClientStep key={idx} title={item.text} meta="Client" />
+                      ))}
+
+                    {recording.actionItems.filter(
+                      (item: any) => item.category === "client",
+                    ).length === 0 && (
+                      <p className="text-sm text-gray-400">
+                        No client steps identified.
+                      </p>
+                    )}
                   </div>
                 </section>
 
@@ -163,18 +202,20 @@ export default async function ProductSyncPage({
 
               {/* Right */}
               <div>
+                {/* Risks & Loops */}
                 <section className="space-y-5">
                   <h2 className="text-lg font-semibold">Risks & Loops</h2>
 
                   <div className="bg-[#fff7ed] border border-orange-200 rounded-2xl p-6 space-y-5 shadow-sm">
-                    <Risk
-                      title="Budget constraints unclear"
-                      description='Client mentioned "tight budget" but no cap.'
-                    />
-                    <Risk
-                      title="Legal review timeline"
-                      description="No owner assigned yet."
-                    />
+                    {recording.risks.map((risk: any, idx: number) => (
+                      <Risk key={idx} description={risk.description} />
+                    ))}
+
+                    {recording.risks.length === 0 && (
+                      <p className="text-sm text-orange-800/70">
+                        No risks identified.
+                      </p>
+                    )}
                   </div>
                 </section>
               </div>
