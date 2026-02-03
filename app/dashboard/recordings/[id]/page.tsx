@@ -1,6 +1,7 @@
 import TranscriptViewer from "@/app/components/EntireTranscript";
 import TranscriptPreview from "@/app/components/TranscriptPreview";
 import AnalyseAction from "@/app/components/AnalyzeAction";
+import TaskRowClient from "@/app/components/TaskRowClient";
 
 async function getRecording(id: string) {
   const res = await fetch(
@@ -150,11 +151,14 @@ export default async function ProductSyncPage({
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 {recording.actionItems
                   .filter((item: any) => item.category === "seller")
-                  .map((item: any, idx: number) => (
-                    <TaskRow
-                      key={idx}
+                  .map((item: any) => (
+                    <TaskRowClient
+                      key={item._id} // ✅ FIX
                       title={item.text}
                       completed={item.completed}
+                      clerkUserId={recording.clerkUserId}
+                      recordingId={recording._id}
+                      actionItemId={item._id}
                     />
                   ))}
 
@@ -232,43 +236,6 @@ export default async function ProductSyncPage({
           </button>
         </div>
       </main>
-    </div>
-  );
-}
-
-/* ======================================================
-   INLINE HELPERS (UNCHANGED)
-====================================================== */
-
-function TaskRow({ title, meta, badge, badgeColor, completed }: any) {
-  return (
-    <div className="flex gap-4 px-6 py-5 border-b last:border-b-0 border-gray-100">
-      <input type="checkbox" defaultChecked={completed} />
-      <div className="flex-1">
-        <p
-          className={`text-sm ${
-            completed ? "line-through text-gray-400" : "font-medium"
-          }`}
-        >
-          {title}
-        </p>
-        {(badge || meta) && (
-          <div className="mt-2 flex items-center gap-3 text-xs">
-            {badge && (
-              <span
-                className={`px-2 py-1 rounded-md ${
-                  badgeColor === "orange"
-                    ? "bg-orange-100 text-orange-700"
-                    : "bg-blue-100 text-blue-700"
-                }`}
-              >
-                {badge}
-              </span>
-            )}
-            {meta && <span className="text-gray-500">{meta}</span>}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
