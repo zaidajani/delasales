@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, ChevronDown, Mail, Trash2 } from "lucide-react";
+import Portal from "./Portal";
 
 export default function TaskRowClient({
   title,
@@ -22,10 +23,15 @@ export default function TaskRowClient({
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(title);
   const [saving, setSaving] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [openUp, setOpenUp] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({
+    top: 0,
+    left: 0,
+  });
 
   const triggerRef = useRef<HTMLButtonElement>(null);
+
   const menuRef = useRef<HTMLDivElement>(null);
 
   /* ---------------------------------
@@ -166,48 +172,57 @@ export default function TaskRowClient({
                   if (!triggerRef.current) return;
 
                   const rect = triggerRef.current.getBoundingClientRect();
-                  const spaceBelow = window.innerHeight - rect.bottom;
-                  const spaceAbove = rect.top;
 
-                  // 160px ≈ dropdown height
-                  setOpenUp(spaceBelow < 160 && spaceAbove > spaceBelow);
-                  setMenuOpen((v) => !v);
+                  const dropdownHeight = 140;
+                  const spaceBelow = window.innerHeight - rect.bottom;
+
+                  const openUp = spaceBelow < dropdownHeight;
+
+                  setMenuPos({
+                    top: openUp
+                      ? rect.top - dropdownHeight - 8
+                      : rect.bottom + 8,
+                    left: rect.right - 224, // dropdown width
+                  });
+
+                  setMenuOpen(true);
                 }}
                 className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 cursor-pointer"
-                aria-label="More options"
               >
                 <ChevronDown size={14} />
               </button>
 
               {/* Dropdown menu */}
               {menuOpen && (
-                <div
-                  ref={menuRef}
-                  className={`
-      absolute right-0 z-50 w-56 rounded-xl
-      border border-gray-200 bg-white shadow-xl
-      ${openUp ? "bottom-full mb-2" : "top-full mt-2"}
-    `}
-                >
-                  <button
-                    onClick={() => {
-                      setMenuOpen(false);
-                      // TODO: generate follow-up email
-                    }}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-sm text-gray-800 hover:bg-gray-50 cursor-pointer"
+                <Portal>
+                  <div
+                    className="fixed z-[9999] w-64 rounded-xl border border-gray-200 bg-white shadow-xl"
+                    style={{ top: menuPos.top, left: menuPos.left }}
                   >
-                    <Mail size={16} />
-                    <span>Generate follow-up email</span>
-                  </button>
+                    {/* Generate follow-up */}
+                    <button
+                      onClick={() => {
+                        setMenuOpen(false);
+                        // generate follow-up
+                      }}
+                      className="flex w-full items-center gap-3 px-5 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50 whitespace-nowrap"
+                    >
+                      <Mail size={18} className="shrink-0 text-gray-500" />
+                      <span>Generate follow-up email</span>
+                    </button>
 
-                  <button
-                    onClick={deleteTask}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 cursor-pointer"
-                  >
-                    <Trash2 size={16} />
-                    <span>Delete task</span>
-                  </button>
-                </div>
+                    <div className="h-px bg-gray-100" />
+
+                    {/* Delete */}
+                    <button
+                      onClick={deleteTask}
+                      className="flex w-full items-center gap-3 px-5 py-3 text-sm font-medium text-red-600 hover:bg-red-50 whitespace-nowrap"
+                    >
+                      <Trash2 size={18} className="shrink-0" />
+                      <span>Delete task</span>
+                    </button>
+                  </div>
+                </Portal>
               )}
             </div>
           </div>
