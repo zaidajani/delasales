@@ -2,6 +2,7 @@ import TranscriptViewer from "@/app/components/EntireTranscript";
 import TranscriptPreview from "@/app/components/TranscriptPreview";
 import AnalyseAction from "@/app/components/AnalyzeAction";
 import TaskRowClient from "@/app/components/TaskRowClient";
+import ClientStep from "@/app/components/ClientStep";
 
 async function getRecording(id: string) {
   const res = await fetch(
@@ -183,8 +184,15 @@ export default async function ProductSyncPage({
                   <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-5">
                     {recording.actionItems
                       .filter((item: any) => item.category === "client")
-                      .map((item: any, idx: number) => (
-                        <ClientStep key={idx} title={item.text} meta="Client" />
+                      .map((item: any) => (
+                        <ClientStep
+                          key={item._id}
+                          title={item.text}
+                          meta="Client"
+                          clerkUserId={recording.clerkUserId}
+                          recordingId={recording._id}
+                          actionItemId={item._id}
+                        />
                       ))}
 
                     {recording.actionItems.filter(
@@ -236,25 +244,6 @@ export default async function ProductSyncPage({
           </button>
         </div>
       </main>
-    </div>
-  );
-}
-
-function ClientStep({ title, meta, tag }: any) {
-  return (
-    <div className="flex gap-4">
-      <div className="w-2 h-2 mt-2 rounded-full bg-gray-300" />
-      <div>
-        <p className="text-sm font-medium">{title}</p>
-        <div className="mt-1 flex gap-3 text-xs text-gray-500">
-          <span>{meta}</span>
-          {tag && (
-            <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-md">
-              {tag}
-            </span>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
