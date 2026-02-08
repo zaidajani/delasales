@@ -3,6 +3,7 @@ import TranscriptPreview from "@/app/components/TranscriptPreview";
 import AnalyseAction from "@/app/components/AnalyzeAction";
 import TaskRowClient from "@/app/components/TaskRowClient";
 import ClientStep from "@/app/components/ClientStep";
+import AddActionItem from "@/app/components/AddActionItem";
 
 async function getRecording(id: string) {
   const res = await fetch(
@@ -121,12 +122,10 @@ export default async function ProductSyncPage({
             </div>
 
             <div className="flex items-center gap-3">
-              <button className="px-3 py-1.5 rounded-md text-sm border border-gray-200 bg-white hover:bg-gray-50">
-                Share
-              </button>
-              <button className="px-3 py-1.5 rounded-md text-sm bg-blue-600 text-white hover:bg-blue-700">
-                + Add Task
-              </button>
+              <AddActionItem
+                clerkUserId={recording.clerkUserId}
+                recordingId={recording._id}
+              />
             </div>
           </div>
         </header>

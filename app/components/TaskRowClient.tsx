@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, ChevronDown, Mail, Trash2 } from "lucide-react";
-import Portal from "./Portal";
+import Portal from "@/app/components/Portal";
 
 export default function TaskRowClient({
   title,
@@ -20,37 +20,19 @@ export default function TaskRowClient({
 }) {
   const router = useRouter();
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState(title);
   const [saving, setSaving] = useState(false);
-  const [openUp, setOpenUp] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({
-    top: 0,
-    left: 0,
-  });
 
-  const triggerRef = useRef<HTMLButtonElement>(null);
-
-  const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   /* ---------------------------------
      Close menu on outside click
   --------------------------------- */
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  /* ---------------------------------
-     API helpers
-  --------------------------------- */
   async function updateTask(payload: any) {
     setSaving(true);
 
@@ -67,15 +49,10 @@ export default function TaskRowClient({
 
     setSaving(false);
     setIsEditing(false);
-    setMenuOpen(false);
     router.refresh();
   }
 
   async function deleteTask() {
-    if (!confirm("Delete this task?")) return;
-
-    setSaving(true);
-
     await fetch("/api/recordings/action-items", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -86,8 +63,6 @@ export default function TaskRowClient({
       }),
     });
 
-    setSaving(false);
-    setMenuOpen(false);
     router.refresh();
   }
 
@@ -100,14 +75,6 @@ export default function TaskRowClient({
     updateTask({ text: value });
   }
 
-  function cancelEdit() {
-    setValue(title);
-    setIsEditing(false);
-  }
-
-  /* ---------------------------------
-     Render
-  --------------------------------- */
   return (
     <div className="flex items-start gap-4 px-6 py-5 border-b last:border-b-0 border-gray-100">
       {/* Checkbox */}
@@ -119,115 +86,84 @@ export default function TaskRowClient({
         className="mt-1"
       />
 
-      {/* Content */}
+      {/* Text */}
       <div className="flex-1">
         {isEditing ? (
-          <>
-            <input
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              className="w-full text-sm border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-gray-900"
-            />
-
-            <div className="mt-2 flex gap-3 text-xs">
-              <button
-                onClick={saveEdit}
-                className="text-blue-600 hover:underline"
-              >
-                Save
-              </button>
-              <button
-                onClick={cancelEdit}
-                className="text-gray-400 hover:underline"
-              >
-                Cancel
-              </button>
-            </div>
-          </>
+          <input
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onBlur={saveEdit}
+            autoFocus
+            className="w-full rounded-md border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-gray-900"
+          />
         ) : (
-          <div className="flex items-start justify-between gap-3">
-            <p
-              className={`text-sm ${
-                completed ? "line-through text-gray-400" : "font-medium"
-              }`}
-            >
-              {title}
-            </p>
-
-            {/* Actions */}
-            <div ref={menuRef} className="relative flex items-center gap-1">
-              {/* Edit */}
-              <button
-                onClick={() => setIsEditing(true)}
-                className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 cursor-pointer"
-                aria-label="Edit task"
-              >
-                <Pencil size={14} />
-              </button>
-
-              {/* Dropdown trigger */}
-              <button
-                ref={triggerRef}
-                onClick={() => {
-                  if (!triggerRef.current) return;
-
-                  const rect = triggerRef.current.getBoundingClientRect();
-
-                  const dropdownHeight = 140;
-                  const spaceBelow = window.innerHeight - rect.bottom;
-
-                  const openUp = spaceBelow < dropdownHeight;
-
-                  setMenuPos({
-                    top: openUp
-                      ? rect.top - dropdownHeight - 8
-                      : rect.bottom + 8,
-                    left: rect.right - 224, // dropdown width
-                  });
-
-                  setMenuOpen(true);
-                }}
-                className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 cursor-pointer"
-              >
-                <ChevronDown size={14} />
-              </button>
-
-              {/* Dropdown menu */}
-              {menuOpen && (
-                <Portal>
-                  <div
-                    className="fixed z-[9999] w-64 rounded-xl border border-gray-200 bg-white shadow-xl"
-                    style={{ top: menuPos.top, left: menuPos.left }}
-                  >
-                    {/* Generate follow-up */}
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false);
-                        // generate follow-up
-                      }}
-                      className="flex w-full items-center gap-3 px-5 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50 whitespace-nowrap"
-                    >
-                      <Mail size={18} className="shrink-0 text-gray-500" />
-                      <span>Generate follow-up email</span>
-                    </button>
-
-                    <div className="h-px bg-gray-100" />
-
-                    {/* Delete */}
-                    <button
-                      onClick={deleteTask}
-                      className="flex w-full items-center gap-3 px-5 py-3 text-sm font-medium text-red-600 hover:bg-red-50 whitespace-nowrap"
-                    >
-                      <Trash2 size={18} className="shrink-0" />
-                      <span>Delete task</span>
-                    </button>
-                  </div>
-                </Portal>
-              )}
-            </div>
-          </div>
+          <p
+            className={`text-sm ${
+              completed ? "line-through text-gray-400" : "font-medium"
+            }`}
+          >
+            {title}
+          </p>
         )}
       </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-1">
+        {/* Edit */}
+        <button
+          onClick={() => setIsEditing(true)}
+          className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 cursor-pointer"
+        >
+          <Pencil size={14} />
+        </button>
+
+        {/* Menu trigger */}
+        <button
+          ref={buttonRef}
+          onClick={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            setMenuPos({
+              top: rect.bottom + 8,
+              left: Math.min(rect.left, window.innerWidth - 260),
+            });
+            setMenuOpen(true);
+          }}
+          className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-700 cursor-pointer"
+        >
+          <ChevronDown size={14} />
+        </button>
+      </div>
+
+      {/* Dropdown (PORTAL) */}
+      {menuOpen && (
+        <Portal>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-[9998]"
+            onClick={() => setMenuOpen(false)}
+          />
+
+          {/* Menu */}
+          <div
+            className="fixed z-[9999] w-64 rounded-xl border border-gray-200 bg-white shadow-xl"
+            style={{ top: menuPos.top, left: menuPos.left }}
+            onClick={(e) => e.stopPropagation()} // 🔑 IMPORTANT
+          >
+            <div className="h-px bg-gray-100" />
+
+            <button
+              onClick={() => {
+                deleteTask();
+                setMenuOpen(false);
+              }}
+              className="flex w-full items-center gap-3 px-5 py-3 text-sm text-red-600 hover:bg-red-50 cursor-pointer"
+            >
+              <Trash2 size={18} />
+              Delete task
+            </button>
+          </div>
+        </Portal>
+      )}
     </div>
   );
 }
