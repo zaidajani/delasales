@@ -53,8 +53,67 @@ export async function POST(request: Request) {
       );
     }
 
+   /* ---------------------------------
+   2.5 Generate transcript summary (once)
+--------------------------------- */
+if (!recording.summary) {
+  const summaryPrompt = `
+Summarize the following meeting transcript in 300–400 characters.
+Focus on:
+- Who the client is
+- What was discussed
+- Key intent or outcome
+
+Do NOT add formatting or quotes.
+
+Transcript:
+"""
+${recording.transcript}
+"""
+`;
+
+  const summaryRes = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-5-nano",
+      input: summaryPrompt,
+    }),
+  });
+
+  if (!summaryRes.ok) {
+    console.error("SUMMARY GENERATION FAILED");
+    return NextResponse.json(
+      { error: "Failed to generate summary" },
+      { status: 500 },
+    );
+  }
+
+  const summaryData = await summaryRes.json();
+
+  const summaryMessage = summaryData.output.find(
+    (item: any) => item.type === "message",
+  );
+
+  const summaryText = summaryMessage?.content?.find(
+    (c: any) => c.type === "output_text",
+  )?.text;
+
+  if (!summaryText) {
+    return NextResponse.json(
+      { error: "Invalid summary output" },
+      { status: 500 },
+    );
+  }
+
+  recording.summary = summaryText.trim();
+}
+
     /* ---------------------------------
-       3. Build OpenAI prompt
+       3. Build OpenAI prompt (TASKS)
     --------------------------------- */
     let prompt = `
 You are the intelligence engine for a professional post-meeting execution tool.
@@ -75,16 +134,14 @@ Use these four categories:
 4) risks_and_open_loops
 
 Rules:
-- Every action item MUST belong to exactly one category:
-  - seller_action_items: tasks the seller / internal team must do
-  - client_action_items: tasks the client must do
+- Every action item MUST belong to exactly one category
 - Risks MUST ONLY appear in risks_and_open_loops
 - Include descriptions
-- Include explicit deadlines if mentioned, otherwise use null
+- Include explicit deadlines if mentioned, otherwise null
 - Assign confidence ("hard" | "soft")
 - Do NOT invent or guess information
 
-Each item must follow this shape:
+Each item must follow:
 {
   "description": string,
   "deadline": string | null,
@@ -122,22 +179,8 @@ ${instruction}
       }),
     });
 
-    if (!aiRes.ok) {
-      const errText = await aiRes.text();
-      console.error("OPENAI HTTP ERROR:", errText);
-      return NextResponse.json(
-        { error: "OpenAI request failed" },
-        { status: 500 },
-      );
-    }
-
     const aiData = await aiRes.json();
 
-    /* ---------------------------------
-   5. Extract assistant output (CORRECT)
---------------------------------- */
-
-    // Find the assistant message block
     const messageBlock = aiData.output.find(
       (item: any) => item.type === "message",
     );
@@ -147,21 +190,16 @@ ${instruction}
     )?.text;
 
     if (!outputText || typeof outputText !== "string") {
-      console.error("OPENAI RAW RESPONSE:", aiData);
       return NextResponse.json(
         { error: "No usable output returned from OpenAI" },
         { status: 500 },
       );
     }
 
-    /* ---------------------------------
-       6. Parse JSON safely (NO throws)
-    --------------------------------- */
     let parsed;
     try {
       parsed = JSON.parse(outputText);
-    } catch (err) {
-      console.error("INVALID JSON FROM OPENAI:", outputText);
+    } catch {
       return NextResponse.json(
         { error: "OpenAI returned invalid JSON" },
         { status: 500 },
@@ -169,8 +207,8 @@ ${instruction}
     }
 
     /* ---------------------------------
-   7. Map AI output → schema
---------------------------------- */
+       5. Map AI output → schema
+    --------------------------------- */
     recording.actionItems = [
       ...(parsed.seller_action_items || []).map((item: any) => ({
         text: item.description,
@@ -193,8 +231,8 @@ ${instruction}
     recording.status = "completed";
 
     /* ---------------------------------
-   🔥 BACKFILL LEGACY DATA (CRITICAL)
---------------------------------- */
+       🔥 BACKFILL LEGACY DATA
+    --------------------------------- */
     user.recordings.forEach((rec: any) => {
       rec.actionItems?.forEach((item: any) => {
         if (!item.category) {
@@ -205,9 +243,6 @@ ${instruction}
 
     await user.save();
 
-    /* ---------------------------------
-       8. Respond
-    --------------------------------- */
     return NextResponse.json(
       {
         message: "Recording analysed successfully",

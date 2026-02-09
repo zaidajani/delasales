@@ -12,6 +12,11 @@ const RecordingSchema = new mongoose.Schema(
 
     transcript: { type: String },
 
+    summary: {
+      type: String,
+      default: null,
+    },
+
     actionItems: [
       {
         text: { type: String, required: true },
@@ -44,6 +49,21 @@ const RecordingSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
+    emails: [
+      {
+        actionItemId: {
+          type: mongoose.Schema.Types.ObjectId,
+          required: true,
+        },
+        subject: String,
+        body: String,
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   { timestamps: true },
 );

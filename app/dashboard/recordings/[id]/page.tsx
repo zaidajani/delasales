@@ -183,16 +183,24 @@ export default async function ProductSyncPage({
                   <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-5">
                     {recording.actionItems
                       .filter((item: any) => item.category === "client")
-                      .map((item: any) => (
-                        <ClientStep
-                          key={item._id}
-                          title={item.text}
-                          meta="Client"
-                          clerkUserId={recording.clerkUserId}
-                          recordingId={recording._id}
-                          actionItemId={item._id}
-                        />
-                      ))}
+                      .map((item: any) => {
+                        // 🔑 Find existing email for this action item (if any)
+                        const existingEmail = recording.emails?.find(
+                          (email: any) => email.actionItemId === item._id,
+                        );
+
+                        return (
+                          <ClientStep
+                            key={item._id}
+                            title={item.text}
+                            meta="Client"
+                            clerkUserId={recording.clerkUserId}
+                            recordingId={recording._id}
+                            actionItemId={item._id}
+                            existingEmail={existingEmail}
+                          />
+                        );
+                      })}
 
                     {recording.actionItems.filter(
                       (item: any) => item.category === "client",
