@@ -59,3 +59,11 @@ body {
   overflow-y: auto;
   padding: 16px;
 }
+
+.ProseMirror p {
+  margin: 0.75em 0;
+}
+
+.ProseMirror p:empty::before {
+  content: "\00a0";
+}

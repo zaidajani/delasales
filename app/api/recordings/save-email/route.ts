@@ -8,11 +8,11 @@ export async function POST(request: Request) {
       clerkUserId,
       recordingId,
       actionItemId,
-      body,
       subject,
+      body,
     } = await request.json();
 
-    if (!clerkUserId || !recordingId || !actionItemId || !body) {
+    if (!clerkUserId || !recordingId || !actionItemId || !subject || !body) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -34,19 +34,22 @@ export async function POST(request: Request) {
       );
     }
 
-    const existing = recording.emails.find(
+    let email = recording.emails.find(
       (e: any) => e.actionItemId.toString() === actionItemId
     );
 
-    if (existing) {
-      existing.body = body;
-      if (subject) existing.subject = subject;
-    } else {
+    if (!email) {
       recording.emails.push({
         actionItemId,
-        subject: subject || "Follow-up",
-        body,
+        subject,
+        body, // HTML
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
+    } else {
+      email.subject = subject;
+      email.body = body;
+      email.updatedAt = new Date();
     }
 
     await user.save();

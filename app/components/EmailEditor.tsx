@@ -5,44 +5,63 @@ import { Copy, Send, Save, X } from "lucide-react";
 import TipTapEditor from "@/app/components/TipTapEditor";
 
 /* ---------------------------------
-   Plain text → proper HTML
+   HTML → Plain text (clipboard fallback)
 --------------------------------- */
-export function textToHtml(text: string) {
-  if (!text) return "";
-
-  return text
-    .trim()
-    .split(/\n\s*\n+/) // paragraph breaks
-    .map((p) => `<p>${p.replace(/\n/g, "<br />").trim()}</p>`)
-    .join("");
+function htmlToPlainText(html: string) {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 export default function EmailEditor({
-  email,
+  subject: initialSubject,
+  body: initialBody,
   clerkUserId,
   recordingId,
   actionItemId,
   onClose,
 }: {
-  email: string;
+  subject: string;
+  body: string;
   clerkUserId: string;
   recordingId: string;
   actionItemId: string;
   onClose: () => void;
 }) {
-  const htmlContent = email ? textToHtml(email) : "";
-  const [value, setValue] = useState(htmlContent);
+  const [subject, setSubject] = useState(initialSubject);
+  const [body, setBody] = useState(initialBody); // HTML
   const [saving, setSaving] = useState(false);
 
   /* ---------------------------------
-     Actions
+     Copy (Gmail + Outlook safe)
   --------------------------------- */
-  function copyToClipboard() {
-    navigator.clipboard.writeText(value);
+  async function copyToClipboard() {
+    try {
+      const html = body;
+      const plainText = htmlToPlainText(html);
+
+      const clipboardItem = new ClipboardItem({
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([plainText], { type: "text/plain" }),
+      });
+
+      await navigator.clipboard.write([clipboardItem]);
+    } catch (err) {
+      console.error("Clipboard copy failed:", err);
+      alert("Failed to copy email");
+    }
   }
 
+  /* ---------------------------------
+     Save email (MongoDB)
+  --------------------------------- */
   async function handleSave() {
     try {
+      setSaving(true);
+
       const res = await fetch("/api/recordings/save-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -50,18 +69,22 @@ export default function EmailEditor({
           clerkUserId,
           recordingId,
           actionItemId,
-          body: value,
+          subject,
+          body, // HTML
         }),
       });
 
       if (!res.ok) {
-        throw new Error("Failed to save email");
+        const err = await res.json();
+        throw new Error(err.error || "Failed to save email");
       }
 
       alert("Email saved successfully");
     } catch (err) {
       console.error(err);
       alert("Failed to save email");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -83,47 +106,53 @@ export default function EmailEditor({
         <h3 className="text-base font-semibold">Follow-up Email</h3>
 
         <div className="flex items-center gap-2">
-          {/* Copy */}
           <button
             onClick={copyToClipboard}
-            className="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-200 cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-200"
           >
             <Copy size={16} />
             Copy
           </button>
 
-          {/* Save */}
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
           >
             <Save size={16} />
             {saving ? "Saving…" : "Save"}
           </button>
 
-          {/* Send (disabled for now) */}
           <button
             disabled
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white opacity-50 cursor-not-allowed"
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white opacity-50"
           >
             <Send size={16} />
             Send
           </button>
 
-          {/* Close */}
           <button
             onClick={onClose}
-            className="ml-1 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 cursor-pointer"
+            className="ml-1 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
           >
             <X size={18} />
           </button>
         </div>
       </div>
 
+      {/* Subject */}
+      <div className="px-6 pb-3">
+        <input
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          placeholder="Email subject"
+          className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+        />
+      </div>
+
       {/* Editor */}
       <div className="flex-1 overflow-hidden px-4 pb-4">
-        <TipTapEditor content={value} onChange={setValue} />
+        <TipTapEditor content={body} onChange={setBody} />
       </div>
     </div>
   );
