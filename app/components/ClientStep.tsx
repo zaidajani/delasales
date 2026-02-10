@@ -117,8 +117,13 @@ export default function ClientStep({
 
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
             <div className="w-full max-w-3xl">
-              <EmailEditor email={email} onClose={() => setEditorOpen(false)} />
-
+              <EmailEditor
+                email={email}
+                clerkUserId={clerkUserId}
+                recordingId={recordingId}
+                actionItemId={actionItemId}
+                onClose={() => setEditorOpen(false)}
+              />
               <div className="mt-3 flex justify-end">
                 <button
                   onClick={() => setEditorOpen(false)}

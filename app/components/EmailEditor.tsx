@@ -19,13 +19,20 @@ export function textToHtml(text: string) {
 
 export default function EmailEditor({
   email,
+  clerkUserId,
+  recordingId,
+  actionItemId,
   onClose,
 }: {
   email: string;
+  clerkUserId: string;
+  recordingId: string;
+  actionItemId: string;
   onClose: () => void;
 }) {
   const htmlContent = email ? textToHtml(email) : "";
   const [value, setValue] = useState(htmlContent);
+  const [saving, setSaving] = useState(false);
 
   /* ---------------------------------
      Actions
@@ -34,9 +41,28 @@ export default function EmailEditor({
     navigator.clipboard.writeText(value);
   }
 
-  function handleSave() {
-    console.log("Save email draft:", value);
-    // 🔜 persist to MongoDB
+  async function handleSave() {
+    try {
+      const res = await fetch("/api/recordings/save-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clerkUserId,
+          recordingId,
+          actionItemId,
+          body: value,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to save email");
+      }
+
+      alert("Email saved successfully");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to save email");
+    }
   }
 
   /* ---------------------------------
@@ -69,10 +95,11 @@ export default function EmailEditor({
           {/* Save */}
           <button
             onClick={handleSave}
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 cursor-pointer"
+            disabled={saving}
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 cursor-pointer"
           >
             <Save size={16} />
-            Save
+            {saving ? "Saving…" : "Save"}
           </button>
 
           {/* Send (disabled for now) */}
