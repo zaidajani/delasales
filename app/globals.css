@@ -12,3 +12,50 @@ body {
   font-family: var(--font-inter), system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
+
+/* TipTap email editor spacing */
+.tiptap p {
+  margin-bottom: 1rem;
+}
+
+.tiptap p:last-child {
+  margin-bottom: 0;
+}
+
+/* Remove TipTap default borders */
+.ProseMirror {
+  border: none !important;
+  outline: none !important;
+}
+
+/* Remove toolbar separator line */
+.tiptap-toolbar {
+  border-bottom: none !important;
+}
+
+/* Softer text selection inside editor */
+.ProseMirror ::selection {
+  background: rgba(59, 130, 246, 0.15); /* soft blue */
+}
+
+/* Firefox */
+.ProseMirror ::-moz-selection {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+/* Remove focus ring / outline */
+.ProseMirror:focus {
+  outline: none !important;
+}
+
+/* Remove TipTap focus box */
+.ProseMirror-focused {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.ProseMirror {
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px;
+}

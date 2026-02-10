@@ -11,6 +11,13 @@
   "dependencies": {
     "@clerk/nextjs": "^6.36.10",
     "@supabase/supabase-js": "^2.91.1",
+    "@tiptap/extension-color": "^3.19.0",
+    "@tiptap/extension-highlight": "^3.19.0",
+    "@tiptap/extension-placeholder": "^3.19.0",
+    "@tiptap/extension-text-align": "^3.19.0",
+    "@tiptap/extension-text-style": "^3.19.0",
+    "@tiptap/react": "^3.19.0",
+    "@tiptap/starter-kit": "^3.19.0",
     "chart.js": "^4.5.1",
     "lucide-react": "^0.563.0",
     "mongoose": "^9.1.5",
