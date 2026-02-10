@@ -5,6 +5,7 @@ import { Mail } from "lucide-react";
 import GenerateEmailModal from "@/app/components/GenerateEmailModal";
 import EmailEditor from "@/app/components/EmailEditor";
 import Portal from "@/app/components/Portal";
+import { useEffect } from "react";
 
 export default function ClientStep({
   title,
@@ -26,6 +27,13 @@ export default function ClientStep({
 }) {
   const [generateOpen, setGenerateOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [subject, setSubject] = useState("");
+
+  useEffect(() => {
+    if (existingEmail?.subject) {
+      setSubject(existingEmail.subject);
+    }
+  }, [existingEmail?.subject]);
 
   // Local state (used immediately after generation)
   const [email, setEmail] = useState<string | null>(
@@ -57,6 +65,12 @@ export default function ClientStep({
       }
 
       const data = await res.json();
+
+      setEmail(data.body);
+      setSubject(data.subject);
+
+      setGenerateOpen(false);
+      setEditorOpen(true);
 
       // 🔑 IMPORTANT: backend returns { subject, body }
       setEmail(data.body);
@@ -118,7 +132,7 @@ export default function ClientStep({
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
             <div className="w-full max-w-3xl">
               <EmailEditor
-                subject={existingEmail?.subject || ""}
+                subject={subject || ""}
                 body={email}
                 clerkUserId={clerkUserId}
                 recordingId={recordingId}
