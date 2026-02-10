@@ -23,6 +23,7 @@ export default function EmailEditor({
   recordingId,
   actionItemId,
   onClose,
+  onSaved, // ✅ ADD THIS
 }: {
   subject: string;
   body: string;
@@ -30,9 +31,10 @@ export default function EmailEditor({
   recordingId: string;
   actionItemId: string;
   onClose: () => void;
+  onSaved: (data: { subject: string; body: string }) => void;
 }) {
   const [subject, setSubject] = useState(initialSubject);
-  const [body, setBody] = useState(initialBody); // HTML
+  const [body, setBody] = useState(initialBody);
   const [saving, setSaving] = useState(false);
 
   /* ---------------------------------
@@ -56,7 +58,7 @@ export default function EmailEditor({
   }
 
   /* ---------------------------------
-     Save email (MongoDB)
+     Save email (MongoDB + UI sync)
   --------------------------------- */
   async function handleSave() {
     try {
@@ -70,7 +72,7 @@ export default function EmailEditor({
           recordingId,
           actionItemId,
           subject,
-          body, // HTML
+          body,
         }),
       });
 
@@ -79,7 +81,10 @@ export default function EmailEditor({
         throw new Error(err.error || "Failed to save email");
       }
 
-      alert("Email saved successfully");
+      // 🔥 CRITICAL: update parent state
+      onSaved({ subject, body });
+
+      onClose();
     } catch (err) {
       console.error(err);
       alert("Failed to save email");
@@ -147,18 +152,7 @@ export default function EmailEditor({
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           placeholder="Email subject"
-          className="
-      w-full
-      rounded-xl
-      mb-5
-      border border-gray-200
-      bg-white
-      px-4 py-3
-      text-sm
-      outline-none
-      focus:border-blue-500
-      focus:ring-2 focus:ring-blue-100
-    "
+          className="w-full rounded-xl mb-5 border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
         />
       </div>
 

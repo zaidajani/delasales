@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Sparkles } from "lucide-react";
 import Portal from "@/app/components/Portal";
 
@@ -11,11 +11,33 @@ export default function GenerateEmailModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onGenerate: (context: string) => void;
+  onGenerate: (context: string) => Promise<void> | void;
 }) {
   const [context, setContext] = useState("");
+  const [generating, setGenerating] = useState(false);
+
+  // Reset state when modal closes
+  useEffect(() => {
+    if (!open) {
+      setContext("");
+      setGenerating(false);
+    }
+  }, [open]);
 
   if (!open) return null;
+
+  async function handleGenerate() {
+    if (generating) return;
+
+    try {
+      setGenerating(true);
+      await onGenerate(context);
+    } finally {
+      // ❗ Do NOT close modal here
+      // Parent decides when to close after success
+      setGenerating(false);
+    }
+  }
 
   return (
     <Portal>
@@ -39,7 +61,8 @@ export default function GenerateEmailModal({
 
             <button
               onClick={onClose}
-              className="cursor-pointer rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              disabled={generating}
+              className="cursor-pointer rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
             >
               <X size={18} />
             </button>
@@ -58,7 +81,8 @@ export default function GenerateEmailModal({
                   onChange={(e) => setContext(e.target.value)}
                   rows={4}
                   placeholder="e.g. Keep the tone friendly, mention pricing follow-up, short & crisp"
-                  className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-gray-400"
+                  disabled={generating}
+                  className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-gray-400 disabled:opacity-60"
                 />
               </div>
 
@@ -78,17 +102,23 @@ export default function GenerateEmailModal({
           <div className="flex items-center justify-between px-6 py-4 bg-gray-100/60">
             <button
               onClick={onClose}
-              className="cursor-pointer text-sm text-gray-600 hover:text-gray-800"
+              disabled={generating}
+              className="cursor-pointer text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50"
             >
               Cancel
             </button>
 
             <button
-              onClick={() => onGenerate(context)}
-              className="cursor-pointer inline-flex items-center gap-2 rounded-lg bg-gray-900 px-5 py-2 text-sm font-medium text-white hover:bg-black"
+              onClick={handleGenerate}
+              disabled={generating}
+              className={`inline-flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-medium text-white transition
+                ${generating
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-gray-900 hover:bg-black cursor-pointer"
+                }`}
             >
               <Sparkles size={16} />
-              Generate Email
+              {generating ? "Generating…" : "Generate Email"}
             </button>
           </div>
 

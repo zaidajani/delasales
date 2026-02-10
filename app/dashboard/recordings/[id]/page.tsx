@@ -4,6 +4,7 @@ import AnalyseAction from "@/app/components/AnalyzeAction";
 import TaskRowClient from "@/app/components/TaskRowClient";
 import ClientStep from "@/app/components/ClientStep";
 import AddActionItem from "@/app/components/AddActionItem";
+import AddClientTask from "@/app/components/AddClientTask";
 
 async function getRecording(id: string) {
   const res = await fetch(
@@ -180,35 +181,28 @@ export default async function ProductSyncPage({
                 <section className="space-y-5">
                   <h2 className="text-lg font-semibold">Client Steps</h2>
 
-                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-5">
+                  <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
                     {recording.actionItems
                       .filter((item: any) => item.category === "client")
-                      .map((item: any) => {
-                        // 🔑 Find existing email for this action item (if any)
-                        const existingEmail = recording.emails?.find(
-                          (email: any) => email.actionItemId === item._id,
-                        );
+                      .map((item: any) => (
+                        <ClientStep
+                          key={item._id}
+                          title={item.text}
+                          meta="Client"
+                          clerkUserId={recording.clerkUserId}
+                          recordingId={recording._id}
+                          actionItemId={item._id}
+                          existingEmail={recording.emails?.find(
+                            (e: any) => e.actionItemId === item._id,
+                          )}
+                        />
+                      ))}
 
-                        return (
-                          <ClientStep
-                            key={item._id}
-                            title={item.text}
-                            meta="Client"
-                            clerkUserId={recording.clerkUserId}
-                            recordingId={recording._id}
-                            actionItemId={item._id}
-                            existingEmail={existingEmail}
-                          />
-                        );
-                      })}
-
-                    {recording.actionItems.filter(
-                      (item: any) => item.category === "client",
-                    ).length === 0 && (
-                      <p className="text-sm text-gray-400">
-                        No client steps identified.
-                      </p>
-                    )}
+                    {/* 👇 ADD HERE */}
+                    <AddClientTask
+                      clerkUserId={recording.clerkUserId}
+                      recordingId={recording._id}
+                    />
                   </div>
                 </section>
 

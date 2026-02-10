@@ -46,42 +46,31 @@ export default function ClientStep({
      Generate email (AI)
   --------------------------------- */
   async function handleGenerate(context: string) {
-    try {
-      setLoading(true);
+    setLoading(true);
 
-      const res = await fetch("/api/recordings/generate-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          clerkUserId,
-          recordingId,
-          actionItemId,
-          extraContext: context,
-        }),
-      });
+    const res = await fetch("/api/recordings/generate-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clerkUserId,
+        recordingId,
+        actionItemId,
+        extraContext: context,
+      }),
+    });
 
-      if (!res.ok) {
-        throw new Error("Email generation failed");
-      }
-
-      const data = await res.json();
-
-      setEmail(data.body);
-      setSubject(data.subject);
-
-      setGenerateOpen(false);
-      setEditorOpen(true);
-
-      // 🔑 IMPORTANT: backend returns { subject, body }
-      setEmail(data.body);
-      setGenerateOpen(false);
-      setEditorOpen(true);
-    } catch (err) {
-      console.error("GENERATE EMAIL ERROR:", err);
-      alert("Failed to generate email");
-    } finally {
+    if (!res.ok) {
       setLoading(false);
+      throw new Error("Email generation failed");
     }
+
+    const data = await res.json();
+    setEmail(data.body);
+    setSubject(data.subject);
+
+    setGenerateOpen(false);
+    setEditorOpen(true);
+    setLoading(false);
   }
 
   const hasEmail = Boolean(email);
@@ -106,7 +95,20 @@ export default function ClientStep({
           onClick={() =>
             hasEmail ? setEditorOpen(true) : setGenerateOpen(true)
           }
-          className="inline-flex items-center gap-2 rounded-md border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+          className="
+    inline-flex
+    items-center
+    gap-2
+    whitespace-nowrap
+    shrink-0
+    rounded-md
+    border border-gray-200
+    px-4 py-2
+    text-xs font-medium
+    text-gray-700
+    hover:bg-gray-50
+    cursor-pointer
+  "
         >
           <Mail size={14} />
           {hasEmail ? "Show Email" : "Generate Email"}
@@ -132,12 +134,16 @@ export default function ClientStep({
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
             <div className="w-full max-w-3xl">
               <EmailEditor
-                subject={subject || ""}
-                body={email}
+                subject={subject ?? ""}
+                body={email ?? ""}
                 clerkUserId={clerkUserId}
                 recordingId={recordingId}
                 actionItemId={actionItemId}
                 onClose={() => setEditorOpen(false)}
+                onSaved={({ subject, body }) => {
+                  setSubject(subject);
+                  setEmail(body);
+                }}
               />
             </div>
           </div>
