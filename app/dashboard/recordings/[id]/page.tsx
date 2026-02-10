@@ -5,6 +5,7 @@ import TaskRowClient from "@/app/components/TaskRowClient";
 import ClientStep from "@/app/components/ClientStep";
 import AddActionItem from "@/app/components/AddActionItem";
 import AddClientTask from "@/app/components/AddClientTask";
+import GenerateFollowUpBar from "@/app/components/GenerateFollowUpBar";
 
 async function getRecording(id: string) {
   const res = await fetch(
@@ -237,13 +238,11 @@ export default async function ProductSyncPage({
         </div>
 
         {/* Bottom Bar */}
-        <div className="fixed bottom-0 left-[280px] right-0 bg-white border-t border-gray-200 px-12 py-4 flex items-center justify-between">
-          <span className="text-sm text-gray-400">Autosaved 2m ago</span>
-
-          <button className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-5 py-2 rounded-lg">
-            Generate Follow-up
-          </button>
-        </div>
+        <GenerateFollowUpBar
+          clerkUserId={recording.clerkUserId}
+          recordingId={recording._id}
+          existingEmail={recording.summaryEmail}
+        />
       </main>
     </div>
   );

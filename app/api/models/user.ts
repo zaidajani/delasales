@@ -17,6 +17,12 @@ const RecordingSchema = new mongoose.Schema(
       default: null,
     },
 
+    summaryEmail: {
+      subject: { type: String },
+      body: { type: String },
+      updatedAt: { type: Date },
+    },
+
     actionItems: [
       {
         text: { type: String, required: true },

@@ -29,7 +29,7 @@ export default function EmailEditor({
   body: string;
   clerkUserId: string;
   recordingId: string;
-  actionItemId: string;
+  actionItemId?: string;
   onClose: () => void;
   onSaved: (data: { subject: string; body: string }) => void;
 }) {
@@ -81,10 +81,10 @@ export default function EmailEditor({
         throw new Error(err.error || "Failed to save email");
       }
 
-      // 🔥 CRITICAL: update parent state
+      // 🔥 IMPORTANT
       onSaved({ subject, body });
 
-      onClose();
+      alert("Email saved successfully");
     } catch (err) {
       console.error(err);
       alert("Failed to save email");
