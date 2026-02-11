@@ -14,22 +14,32 @@ export default function GenerateFollowUpBar({
   existingEmail?: {
     subject: string;
     body: string;
+    to?: string;
+    status?: "draft" | "sent";
   };
 }) {
+  /* ---------------------------------
+     Local UI State
+  --------------------------------- */
   const [loading, setLoading] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
 
   // 🔑 Source of truth for UI
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
+  const [subject, setSubject] = useState<string>("");
+  const [body, setBody] = useState<string>("");
+  const [to, setTo] = useState<string>("");
+  const [status, setStatus] = useState<"draft" | "sent">("draft");
 
   /* ---------------------------------
      Sync when server data changes
+     (IMPORTANT for refresh case)
   --------------------------------- */
   useEffect(() => {
     if (existingEmail) {
       setSubject(existingEmail.subject || "");
       setBody(existingEmail.body || "");
+      setTo(existingEmail.to || "");
+      setStatus(existingEmail.status || "draft");
     }
   }, [existingEmail]);
 
@@ -39,6 +49,8 @@ export default function GenerateFollowUpBar({
      Generate summary follow-up email
   --------------------------------- */
   async function handleGenerate() {
+    if (loading) return;
+
     try {
       setLoading(true);
 
@@ -53,32 +65,51 @@ export default function GenerateFollowUpBar({
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to generate follow-up");
-      }
-
       const data = await res.json();
 
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to generate follow-up");
+      }
+
+      // 🔥 instantly update UI
       setSubject(data.subject);
       setBody(data.body);
+      setStatus("draft");
+
       setEditorOpen(true);
     } catch (err) {
-      console.error(err);
+      console.error("SUMMARY GENERATE ERROR:", err);
       alert("Failed to generate follow-up");
     } finally {
       setLoading(false);
     }
   }
 
+  /* ---------------------------------
+     Button Text Logic
+  --------------------------------- */
+  const buttonText = loading
+    ? "Generating…"
+    : hasEmail
+    ? "Show Follow-up"
+    : "Generate Follow-up";
+
+  /* ---------------------------------
+     Render
+  --------------------------------- */
   return (
     <>
       {/* ===============================
           Bottom Bar
       =============================== */}
       <div className="fixed bottom-0 left-[280px] right-0 bg-white border-t border-gray-200 px-12 py-4 flex items-center justify-between z-40">
+        
         <span className="text-sm text-gray-400">
-          {hasEmail ? "Follow-up saved" : "No follow-up yet"}
+          {status === "sent"
+            ? "Follow-up sent"
+            : hasEmail
+            ? "Follow-up saved"
+            : "No follow-up yet"}
         </span>
 
         <button
@@ -93,11 +124,7 @@ export default function GenerateFollowUpBar({
             whitespace-nowrap
           "
         >
-          {loading
-            ? "Generating…"
-            : hasEmail
-            ? "Show Follow-up"
-            : "Generate Follow-up"}
+          {buttonText}
         </button>
       </div>
 
@@ -106,20 +133,25 @@ export default function GenerateFollowUpBar({
       =============================== */}
       {editorOpen && (
         <Portal>
+          {/* Overlay */}
           <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
 
+          {/* Modal */}
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
             <SummaryEmailEditor
               subject={subject}
               body={body}
+              to={to}
+              status={status}
               clerkUserId={clerkUserId}
               recordingId={recordingId}
               onClose={() => setEditorOpen(false)}
-              onSaved={({ subject, body }) => {
-                // 🔥 instant UI update (NO refresh)
+              onSaved={({ subject, body, to, status }) => {
+                // 🔥 Instant UI Sync
                 setSubject(subject);
                 setBody(body);
-                setEditorOpen(false);
+                setTo(to);
+                setStatus(status);
               }}
             />
           </div>

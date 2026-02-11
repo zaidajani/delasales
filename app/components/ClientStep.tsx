@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Mail } from "lucide-react";
 import GenerateEmailModal from "@/app/components/GenerateEmailModal";
 import EmailEditor from "@/app/components/EmailEditor";
 import Portal from "@/app/components/Portal";
-import { useEffect } from "react";
 
 export default function ClientStep({
   title,
@@ -13,7 +12,7 @@ export default function ClientStep({
   clerkUserId,
   recordingId,
   actionItemId,
-  existingEmail, // 👈 comes from page.tsx
+  existingEmail,
 }: {
   title: string;
   meta?: string;
@@ -23,58 +22,92 @@ export default function ClientStep({
   existingEmail?: {
     subject: string;
     body: string;
+    to?: string; // ✅ FIX 1
+    status?: "draft" | "sent"; // ✅ FIX 2
   };
 }) {
+  /* ---------------------------------
+     State
+  --------------------------------- */
   const [generateOpen, setGenerateOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
-  const [subject, setSubject] = useState("");
 
-  useEffect(() => {
-    if (existingEmail?.subject) {
-      setSubject(existingEmail.subject);
-    }
-  }, [existingEmail?.subject]);
+  const [subject, setSubject] = useState<string>("");
+  const [email, setEmail] = useState<string | null>(null);
+  const [to, setTo] = useState<string>("");
 
-  // Local state (used immediately after generation)
-  const [email, setEmail] = useState<string | null>(
-    existingEmail?.body || null,
+  const [status, setStatus] = useState<"draft" | "sent">(
+    existingEmail?.status ?? "draft"
   );
 
   const [loading, setLoading] = useState(false);
 
   /* ---------------------------------
-     Generate email (AI)
+     Sync from DB (on refresh)
+  --------------------------------- */
+  useEffect(() => {
+    if (existingEmail) {
+      setSubject(existingEmail.subject || "");
+      setEmail(existingEmail.body || null);
+      setTo(existingEmail.to || "");
+      setStatus(existingEmail.status ?? "draft");
+    }
+  }, [existingEmail]);
+
+  const hasEmail = Boolean(subject && email);
+
+  /* ---------------------------------
+     Generate Email (AI)
   --------------------------------- */
   async function handleGenerate(context: string) {
-    setLoading(true);
+    if (loading) return;
 
-    const res = await fetch("/api/recordings/generate-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        clerkUserId,
-        recordingId,
-        actionItemId,
-        extraContext: context,
-      }),
-    });
+    try {
+      setLoading(true);
 
-    if (!res.ok) {
+      const res = await fetch("/api/recordings/generate-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clerkUserId,
+          recordingId,
+          actionItemId,
+          extraContext: context,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Email generation failed");
+      }
+
+      const data = await res.json();
+
+      setSubject(data.subject);
+      setEmail(data.body);
+      setStatus("draft");
+
+      setGenerateOpen(false);
+      setEditorOpen(true);
+    } catch (err) {
+      console.error("GENERATE ERROR:", err);
+      alert("Failed to generate email");
+    } finally {
       setLoading(false);
-      throw new Error("Email generation failed");
     }
-
-    const data = await res.json();
-    setEmail(data.body);
-    setSubject(data.subject);
-
-    setGenerateOpen(false);
-    setEditorOpen(true);
-    setLoading(false);
   }
 
-  const hasEmail = Boolean(email);
+  /* ---------------------------------
+     Button Label Logic
+  --------------------------------- */
+  const buttonLabel = loading
+    ? "Generating…"
+    : hasEmail
+    ? "Show Email"
+    : "Generate Email";
 
+  /* ---------------------------------
+     Render
+  --------------------------------- */
   return (
     <>
       {/* ===============================
@@ -86,32 +119,36 @@ export default function ClientStep({
           <div className="w-2 h-2 mt-2 rounded-full bg-gray-300" />
           <div>
             <p className="text-sm font-medium">{title}</p>
-            {meta && <div className="mt-1 text-xs text-gray-500">{meta}</div>}
+            {meta && (
+              <div className="mt-1 text-xs text-gray-500">{meta}</div>
+            )}
           </div>
         </div>
 
         {/* Right */}
         <button
+          disabled={loading}
           onClick={() =>
             hasEmail ? setEditorOpen(true) : setGenerateOpen(true)
           }
           className="
-    inline-flex
-    items-center
-    gap-2
-    whitespace-nowrap
-    shrink-0
-    rounded-md
-    border border-gray-200
-    px-4 py-2
-    text-xs font-medium
-    text-gray-700
-    hover:bg-gray-50
-    cursor-pointer
-  "
+            inline-flex
+            items-center
+            gap-2
+            whitespace-nowrap
+            shrink-0
+            rounded-md
+            border border-gray-200
+            px-4 py-2
+            text-xs font-medium
+            text-gray-700
+            hover:bg-gray-50
+            disabled:opacity-60
+            cursor-pointer
+          "
         >
           <Mail size={14} />
-          {hasEmail ? "Show Email" : "Generate Email"}
+          {buttonLabel}
         </button>
       </div>
 
@@ -134,15 +171,19 @@ export default function ClientStep({
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
             <div className="w-full max-w-3xl">
               <EmailEditor
-                subject={subject ?? ""}
-                body={email ?? ""}
+                subject={subject}
+                body={email}
+                to={to}
+                status={status}
                 clerkUserId={clerkUserId}
                 recordingId={recordingId}
                 actionItemId={actionItemId}
                 onClose={() => setEditorOpen(false)}
-                onSaved={({ subject, body }) => {
+                onSaved={({ subject, body, to, status }) => {
                   setSubject(subject);
                   setEmail(body);
+                  setTo(to);
+                  setStatus(status); // ✅ keeps sent state in sync
                 }}
               />
             </div>

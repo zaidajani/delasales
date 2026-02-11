@@ -20,9 +20,12 @@ const RecordingSchema = new mongoose.Schema(
     summaryEmail: {
       subject: { type: String },
       body: { type: String },
+      to: { type: String },
+      status: { type: String, default: "draft" },
+      sentAt: { type: Date },
       updatedAt: { type: Date },
     },
-
+    
     actionItems: [
       {
         text: { type: String, required: true },
@@ -68,6 +71,9 @@ const RecordingSchema = new mongoose.Schema(
           type: Date,
           default: Date.now,
         },
+        to: { type: String },
+        status: { type: String, default: "draft" },
+        sentAt: { type: Date },
       },
     ],
   },
@@ -82,6 +88,12 @@ const UserSchema = new mongoose.Schema(
     imageUrl: String,
 
     recordings: [RecordingSchema],
+
+    gmail: {
+      accessToken: String,
+      refreshToken: String,
+      expiryDate: Number,
+    },
   },
   { timestamps: true },
 );

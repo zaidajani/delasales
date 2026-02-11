@@ -8,11 +8,15 @@ export async function POST(request: Request) {
       clerkUserId,
       recordingId,
       actionItemId,
+      to,
       subject,
       body,
     } = await request.json();
 
-    if (!clerkUserId || !recordingId || !actionItemId || !subject || !body) {
+    /* ---------------------------------
+       Validation
+    --------------------------------- */
+    if (!clerkUserId || !recordingId || !actionItemId || !to || !subject || !body) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -34,6 +38,9 @@ export async function POST(request: Request) {
       );
     }
 
+    /* ---------------------------------
+       Find Existing Email
+    --------------------------------- */
     let email = recording.emails.find(
       (e: any) => e.actionItemId.toString() === actionItemId
     );
@@ -41,12 +48,14 @@ export async function POST(request: Request) {
     if (!email) {
       recording.emails.push({
         actionItemId,
+        to,               // ✅ NEW
         subject,
-        body, // HTML
+        body,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
     } else {
+      email.to = to;     // ✅ NEW
       email.subject = subject;
       email.body = body;
       email.updatedAt = new Date();
@@ -54,7 +63,18 @@ export async function POST(request: Request) {
 
     await user.save();
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json(
+      {
+        success: true,
+        email: {
+          actionItemId,
+          to,
+          subject,
+          body,
+        },
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("SAVE EMAIL ERROR:", error);
     return NextResponse.json(

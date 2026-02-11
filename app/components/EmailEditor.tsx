@@ -19,34 +19,40 @@ function htmlToPlainText(html: string) {
 export default function EmailEditor({
   subject: initialSubject,
   body: initialBody,
+  status: initialStatus, // ✅ ADD
+  to: initialTo,
   clerkUserId,
   recordingId,
   actionItemId,
   onClose,
-  onSaved, // ✅ ADD THIS
+  onSaved,
 }: {
   subject: string;
   body: string;
+  status: string;
+  to?: string;
   clerkUserId: string;
   recordingId: string;
   actionItemId?: string;
   onClose: () => void;
-  onSaved: (data: { subject: string; body: string }) => void;
+  onSaved: (data: { subject: string; body: string; to: string }) => void;
 }) {
+  const [to, setTo] = useState(initialTo || "");
   const [subject, setSubject] = useState(initialSubject);
   const [body, setBody] = useState(initialBody);
+  const [status, setStatus] = useState(initialStatus || "draft");
   const [saving, setSaving] = useState(false);
+  const [sending, setSending] = useState(false);
 
   /* ---------------------------------
      Copy (Gmail + Outlook safe)
   --------------------------------- */
   async function copyToClipboard() {
     try {
-      const html = body;
-      const plainText = htmlToPlainText(html);
+      const plainText = htmlToPlainText(body);
 
       const clipboardItem = new ClipboardItem({
-        "text/html": new Blob([html], { type: "text/html" }),
+        "text/html": new Blob([body], { type: "text/html" }),
         "text/plain": new Blob([plainText], { type: "text/plain" }),
       });
 
@@ -58,9 +64,14 @@ export default function EmailEditor({
   }
 
   /* ---------------------------------
-     Save email (MongoDB + UI sync)
+     Save email (MongoDB)
   --------------------------------- */
   async function handleSave() {
+    if (!to || !subject || !body) {
+      alert("To, Subject and Body are required");
+      return;
+    }
+
     try {
       setSaving(true);
 
@@ -71,6 +82,7 @@ export default function EmailEditor({
           clerkUserId,
           recordingId,
           actionItemId,
+          to,
           subject,
           body,
         }),
@@ -81,8 +93,7 @@ export default function EmailEditor({
         throw new Error(err.error || "Failed to save email");
       }
 
-      // 🔥 IMPORTANT
-      onSaved({ subject, body });
+      onSaved({ subject, body, to });
 
       alert("Email saved successfully");
     } catch (err) {
@@ -90,6 +101,56 @@ export default function EmailEditor({
       alert("Failed to save email");
     } finally {
       setSaving(false);
+    }
+  }
+
+  /* ---------------------------------
+     Send Gmail
+  --------------------------------- */
+  async function handleSend() {
+    if (!to || !subject || !body) {
+      alert("Please fill To, Subject and Email body");
+      return;
+    }
+
+    if (sending) return;
+
+    try {
+      setSending(true);
+
+      const res = await fetch("/api/email/send-gmail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recordingId,
+          actionItemId, // optional for summary
+          to,
+          subject,
+          html: body,
+          type: actionItemId ? "action" : "summary",
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (data?.error === "Gmail not connected") {
+          alert("Please connect Gmail from Settings first.");
+        } else {
+          alert(data?.error || "Failed to send email");
+        }
+        return;
+      }
+
+      // ✅ Instantly update UI
+      setStatus("sent");
+
+      alert("Email sent successfully 🎉");
+    } catch (err) {
+      console.error("SEND ERROR:", err);
+      alert("Something went wrong while sending email");
+    } finally {
+      setSending(false);
     }
   }
 
@@ -105,10 +166,10 @@ export default function EmailEditor({
   }, [onClose]);
 
   return (
-    <div className="relative w-full max-w-4xl h-[80vh] rounded-2xl border border-gray-200 bg-white shadow-xl flex flex-col">
+    <div className="relative w-full max-w-4xl h-[85vh] rounded-2xl border border-gray-200 bg-white shadow-xl flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4">
-        <h3 className="text-base font-semibold">Follow-up Email</h3>
+        <h3 className="text-base font-semibold">Compose Email</h3>
 
         <div className="flex items-center gap-2">
           <button
@@ -129,11 +190,20 @@ export default function EmailEditor({
           </button>
 
           <button
-            disabled
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white opacity-50"
+            onClick={handleSend}
+            disabled={sending || status === "sent"}
+            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white transition
+    ${
+      status === "sent"
+        ? "bg-emerald-500 cursor-not-allowed"
+        : sending
+          ? "bg-gray-400 cursor-not-allowed"
+          : "bg-emerald-600 hover:bg-emerald-700"
+    }
+  `}
           >
             <Send size={16} />
-            Send
+            {status === "sent" ? "Sent ✓" : sending ? "Sending…" : "Send"}
           </button>
 
           <button
@@ -145,8 +215,19 @@ export default function EmailEditor({
         </div>
       </div>
 
-      {/* Subject */}
+      {/* To Field */}
       <div className="px-4 pt-2">
+        <input
+          type="email"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          placeholder="Recipient email (e.g. client@example.com)"
+          className="w-full rounded-xl mb-4 border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+        />
+      </div>
+
+      {/* Subject */}
+      <div className="px-4">
         <input
           type="text"
           value={subject}
