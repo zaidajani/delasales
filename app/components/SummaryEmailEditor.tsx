@@ -110,21 +110,16 @@ export default function SummaryEmailEditor({
     }
   }
 
-  /* ---------------------------------
-     Send Gmail
-  --------------------------------- */
   async function handleSend() {
     if (!to || !subject || !body) {
-      alert("To, Subject and Body are required");
+      alert("Please fill To, Subject and Email body");
       return;
     }
-
-    if (sending || status === "sent") return;
 
     try {
       setSending(true);
 
-      const res = await fetch("/api/email/send-gmail", {
+      const res = await fetch("/api/email/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -139,26 +134,12 @@ export default function SummaryEmailEditor({
       const data = await res.json();
 
       if (!res.ok) {
-        if (data?.error === "Gmail not connected") {
-          alert("Please connect Gmail from Settings first.");
-        } else {
-          alert(data?.error || "Failed to send email");
-        }
+        alert(data.error || "Failed to send email");
         return;
       }
 
       setStatus("sent");
-
-      onSaved({
-        subject,
-        body,
-        to,
-        status: "sent",
-      });
-
-      alert("Email sent successfully 🎉");
-    } catch (err) {
-      alert("Something went wrong while sending email");
+      alert("Email sent 🎉");
     } finally {
       setSending(false);
     }
@@ -177,7 +158,6 @@ export default function SummaryEmailEditor({
 
   return (
     <div className="relative w-full max-w-4xl h-[85vh] rounded-2xl border border-gray-200 bg-white shadow-xl flex flex-col">
-      
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4">
         <h3 className="text-base font-semibold">Meeting Follow-up</h3>
@@ -208,17 +188,13 @@ export default function SummaryEmailEditor({
                 status === "sent"
                   ? "bg-emerald-500 cursor-not-allowed"
                   : sending
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-emerald-600 hover:bg-emerald-700"
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : "bg-emerald-600 hover:bg-emerald-700"
               }
             `}
           >
             <Send size={16} />
-            {status === "sent"
-              ? "Sent ✓"
-              : sending
-              ? "Sending…"
-              : "Send"}
+            {status === "sent" ? "Sent ✓" : sending ? "Sending…" : "Send"}
           </button>
 
           <button

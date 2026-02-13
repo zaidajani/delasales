@@ -4,18 +4,20 @@ import { useEffect, useState } from "react";
 import { Mail, CheckCircle2, AlertCircle } from "lucide-react";
 
 export default function ConnectGmailCard() {
-  const [connected, setConnected] = useState<boolean | null>(null);
+  const [gmailConnected, setGmailConnected] = useState<boolean | null>(null);
+  const [outlookConnected, setOutlookConnected] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // 🔎 Check connection status on load
   useEffect(() => {
     async function checkStatus() {
       try {
         const res = await fetch("/api/email/gmail-status");
         const data = await res.json();
-        setConnected(data.connected);
+
+        setGmailConnected(data.gmailConnected);
+        setOutlookConnected(data.outlookConnected);
       } catch {
-        setConnected(false);
+        setGmailConnected(false);
       }
     }
 
@@ -29,9 +31,11 @@ export default function ConnectGmailCard() {
       method: "POST",
     });
 
-    setConnected(false);
+    setGmailConnected(false);
     setLoading(false);
   }
+
+  const blockedByOutlook = outlookConnected && !gmailConnected;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 flex items-center justify-between">
@@ -42,30 +46,33 @@ export default function ConnectGmailCard() {
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-gray-900">
-            Gmail
-          </h3>
+          <h3 className="text-sm font-semibold text-gray-900">Gmail</h3>
 
           <div className="flex items-center gap-2 mt-1 text-xs">
-            {connected === null && (
+            {gmailConnected === null && (
               <span className="text-gray-400">Checking connection…</span>
             )}
 
-            {connected === true && (
+            {gmailConnected === true && (
               <>
                 <CheckCircle2 size={14} className="text-emerald-600" />
-                <span className="text-emerald-700">
-                  Connected
+                <span className="text-emerald-700">Connected</span>
+              </>
+            )}
+
+            {blockedByOutlook && (
+              <>
+                <AlertCircle size={14} className="text-amber-500" />
+                <span className="text-amber-600">
+                  Disconnect Outlook first
                 </span>
               </>
             )}
 
-            {connected === false && (
+            {gmailConnected === false && !blockedByOutlook && (
               <>
                 <AlertCircle size={14} className="text-gray-400" />
-                <span className="text-gray-500">
-                  Not connected
-                </span>
+                <span className="text-gray-500">Not connected</span>
               </>
             )}
           </div>
@@ -74,7 +81,7 @@ export default function ConnectGmailCard() {
 
       {/* Right */}
       <div>
-        {connected ? (
+        {gmailConnected ? (
           <button
             onClick={handleDisconnect}
             disabled={loading}
@@ -84,8 +91,12 @@ export default function ConnectGmailCard() {
           </button>
         ) : (
           <a
-            href="/api/auth/gmail"
-            className="px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white"
+            href={blockedByOutlook ? "#" : "/api/auth/gmail"}
+            className={`px-4 py-2 rounded-lg text-sm font-medium text-white ${
+              blockedByOutlook
+                ? "bg-gray-300 cursor-not-allowed"
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
           >
             Connect Gmail
           </a>

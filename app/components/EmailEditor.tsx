@@ -113,17 +113,15 @@ export default function EmailEditor({
       return;
     }
 
-    if (sending) return;
-
     try {
       setSending(true);
 
-      const res = await fetch("/api/email/send-gmail", {
+      const res = await fetch("/api/email/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           recordingId,
-          actionItemId, // optional for summary
+          actionItemId,
           to,
           subject,
           html: body,
@@ -134,21 +132,12 @@ export default function EmailEditor({
       const data = await res.json();
 
       if (!res.ok) {
-        if (data?.error === "Gmail not connected") {
-          alert("Please connect Gmail from Settings first.");
-        } else {
-          alert(data?.error || "Failed to send email");
-        }
+        alert(data.error || "Failed to send email");
         return;
       }
 
-      // ✅ Instantly update UI
       setStatus("sent");
-
-      alert("Email sent successfully 🎉");
-    } catch (err) {
-      console.error("SEND ERROR:", err);
-      alert("Something went wrong while sending email");
+      alert("Email sent 🎉");
     } finally {
       setSending(false);
     }

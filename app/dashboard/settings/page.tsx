@@ -1,4 +1,5 @@
 import ConnectGmailCard from "@/app/components/ConnectGmailCard";
+import ConnectOutlookCard from "@/app/components/ConnectOutlookCard";
 
 export default function SettingsPage() {
   return (
@@ -21,6 +22,7 @@ export default function SettingsPage() {
           </h2>
 
           <ConnectGmailCard />
+          <ConnectOutlookCard />
         </section>
       </div>
     </div>

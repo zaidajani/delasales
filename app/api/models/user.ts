@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 
+/* =========================================================
+   Recording Schema
+========================================================= */
 const RecordingSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
@@ -9,7 +12,6 @@ const RecordingSchema = new mongoose.Schema(
     durationMinutes: { type: Number },
 
     participants: [{ type: String }],
-
     transcript: { type: String },
 
     summary: {
@@ -17,25 +19,44 @@ const RecordingSchema = new mongoose.Schema(
       default: null,
     },
 
+    /* -----------------------------
+       SUMMARY EMAIL (Follow-up)
+    ----------------------------- */
     summaryEmail: {
-      subject: { type: String },
-      body: { type: String },
-      to: { type: String },
-      status: { type: String, default: "draft" },
-      sentAt: { type: Date },
-      updatedAt: { type: Date },
+      subject: String,
+      body: String,
+      to: String,
+
+      status: {
+        type: String,
+        enum: ["draft", "sent"],
+        default: "draft",
+      },
+
+      sentAt: Date,
+      updatedAt: Date,
+
+      provider: {
+        type: String,
+        enum: ["gmail", "outlook"],
+      },
+
+      messageId: String,
+      threadId: String,        // Gmail
+      conversationId: String,  // Outlook
     },
-    
+
+    /* -----------------------------
+       ACTION ITEMS
+    ----------------------------- */
     actionItems: [
       {
         text: { type: String, required: true },
-
         category: {
           type: String,
           enum: ["client", "seller"],
           required: true,
         },
-
         completed: { type: Boolean, default: false },
       },
     ],
@@ -53,46 +74,98 @@ const RecordingSchema = new mongoose.Schema(
       default: "processing",
     },
 
-    // 👇 NEW FIELD
     isAnalyzed: {
       type: Boolean,
       default: false,
     },
 
+    /* -----------------------------
+       ACTION ITEM EMAILS
+    ----------------------------- */
     emails: [
       {
         actionItemId: {
           type: mongoose.Schema.Types.ObjectId,
           required: true,
+          index: true,
         },
+
         subject: String,
         body: String,
+        to: String,
+
+        status: {
+          type: String,
+          enum: ["draft", "sent"],
+          default: "draft",
+        },
+
+        sentAt: Date,
+
         createdAt: {
           type: Date,
           default: Date.now,
         },
-        to: { type: String },
-        status: { type: String, default: "draft" },
-        sentAt: { type: Date },
+
+        provider: {
+          type: String,
+          enum: ["gmail", "outlook"],
+        },
+
+        messageId: String,
+        threadId: String,        // Gmail
+        conversationId: String,  // Outlook
       },
     ],
   },
   { timestamps: true },
 );
 
+/* =========================================================
+   User Schema
+========================================================= */
 const UserSchema = new mongoose.Schema(
   {
-    clerkUserId: { type: String, required: true, unique: true },
+    clerkUserId: { type: String, required: true, unique: true, index: true },
     email: { type: String, required: true },
     name: String,
     imageUrl: String,
 
     recordings: [RecordingSchema],
 
+    /* =====================================================
+       EMAIL PROVIDER (Single Source of Truth)
+    ===================================================== */
+    emailProvider: {
+      type: String,
+      enum: ["gmail", "outlook", null],
+      default: null,
+    },
+
+    /* -----------------------------
+       Gmail OAuth
+    ----------------------------- */
     gmail: {
-      accessToken: String,
-      refreshToken: String,
-      expiryDate: Number,
+      type: {
+        email: String,
+        accessToken: String,
+        refreshToken: String,
+        expiryDate: Number,
+      },
+      default: undefined, // 🔥 prevents empty object
+    },
+
+    /* -----------------------------
+       Outlook OAuth
+    ----------------------------- */
+    outlook: {
+      type: {
+        email: String,
+        accessToken: String,
+        refreshToken: String,
+        expiryDate: Number,
+      },
+      default: undefined, // 🔥 prevents empty object
     },
   },
   { timestamps: true },
