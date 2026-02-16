@@ -105,22 +105,42 @@ Optional user context:
 ${extraContext || "None"}
 """
 
-Write a follow-up email that:
-- Summarizes the meeting
-- Is professional and friendly
-- Mentions next steps if applicable
-- Is under 180 words
+Your task:
+Write a professional follow-up email.
 
-Return STRICT JSON ONLY:
+Requirements:
+• Summarize the meeting clearly
+• Maintain a friendly, professional tone
+• Mention next steps if applicable
+• Keep the email under 180 words
+• Avoid fluff and repetition
+
+Formatting rules:
+• The body MUST be valid HTML
+• Use <p> for paragraphs
+• Use <br/> only for line breaks inside a paragraph
+• Do NOT use markdown
+• Do NOT return plain text
+
+Structure:
+
+<p>Hi {{client_name}},</p>
+
+<p>[[Brief recap of the meeting]]</p>
+
+<p>[[Key outcomes or decisions]]</p>
+
+<p>[[Next steps or call to action]]</p>
+
+<p>Best regards,<br/>{{signature}}</p>
+
+Output rules:
+Return STRICT JSON ONLY. No extra text.
+
 {
   "subject": string,
   "body": string
 }
-
-Rules:
-- body must be valid HTML (<p>, <br>)
-- no markdown
-- no explanations
 `;
 
     const aiRes = await fetch("https://api.openai.com/v1/responses", {

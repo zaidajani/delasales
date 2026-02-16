@@ -42,8 +42,8 @@ const RecordingSchema = new mongoose.Schema(
       },
 
       messageId: String,
-      threadId: String,        // Gmail
-      conversationId: String,  // Outlook
+      threadId: String, // Gmail
+      conversationId: String, // Outlook
     },
 
     /* -----------------------------
@@ -113,8 +113,8 @@ const RecordingSchema = new mongoose.Schema(
         },
 
         messageId: String,
-        threadId: String,        // Gmail
-        conversationId: String,  // Outlook
+        threadId: String, // Gmail
+        conversationId: String, // Outlook
       },
     ],
   },
@@ -141,6 +141,17 @@ const UserSchema = new mongoose.Schema(
       enum: ["gmail", "outlook", null],
       default: null,
     },
+
+    templates: [
+      {
+        name: { type: String, required: true },
+        subject: String,
+        body: String,
+        isDefault: { type: Boolean, default: false },
+        createdAt: { type: Date, default: Date.now },
+        updatedAt: { type: Date, default: Date.now },
+      },
+    ],
 
     /* -----------------------------
        Gmail OAuth

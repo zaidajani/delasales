@@ -1,10 +1,10 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import UserSync from "@/app/components/UserSync";
 
 const inter = Inter({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
   variable: "--font-inter",
 });
 
@@ -17,6 +17,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body className={`${inter.variable} antialiased`}>
+          <UserSync /> {/* ✅ auto sync + template seeding */}
           {children}
         </body>
       </html>

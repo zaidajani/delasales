@@ -7,6 +7,7 @@ import {
   LogOut,
   User,
   Settings,
+  FileText,
 } from "lucide-react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { useEffect, useRef, useState } from "react";
@@ -41,9 +42,7 @@ export default function Sidebar() {
 
   async function fetchRecordings(clerkUserId: string) {
     try {
-      const res = await fetch(
-        `/api/recordings?clerkUserId=${clerkUserId}`
-      );
+      const res = await fetch(`/api/recordings?clerkUserId=${clerkUserId}`);
 
       if (!res.ok) throw new Error("Failed to fetch recordings");
 
@@ -91,14 +90,14 @@ export default function Sidebar() {
     }
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   /* -------- Active state from URL -------- */
 
   const isDashboardActive = pathname === "/dashboard";
   const isClientsActive = pathname.startsWith("/dashboard/clients");
+  const isTemplatesActive = pathname.startsWith("/dashboard/templates");
 
   const activeRecordingId =
     typeof params?.id === "string" ? params.id : undefined;
@@ -137,6 +136,12 @@ export default function Sidebar() {
             active={isClientsActive}
             onClick={() => router.push("/dashboard/clients")}
           />
+          <NavItem
+            label="Templates"
+            icon={<FileText size={18} />}
+            active={isTemplatesActive}
+            onClick={() => router.push("/dashboard/templates")}
+          />
         </Section>
 
         {loading && (
@@ -153,18 +158,14 @@ export default function Sidebar() {
                   time={formatTime(r.dateTime)}
                   status={mapStatus(r.status)}
                   active={activeRecordingId === r._id}
-                  onClick={() =>
-                    router.push(`/dashboard/recordings/${r._id}`)
-                  }
+                  onClick={() => router.push(`/dashboard/recordings/${r._id}`)}
                 />
               ))}
             </Section>
           ))}
 
         {!loading && recordings.length === 0 && (
-          <p className="px-2 text-sm text-gray-400">
-            No recordings yet
-          </p>
+          <p className="px-2 text-sm text-gray-400">No recordings yet</p>
         )}
       </div>
 
@@ -356,14 +357,8 @@ function SidebarUser({ onClick }: { onClick: () => void }) {
         )}
 
         <div className="min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">
-            {name}
-          </p>
-          {email && (
-            <p className="text-xs text-gray-500 truncate">
-              {email}
-            </p>
-          )}
+          <p className="text-sm font-medium text-gray-900 truncate">{name}</p>
+          {email && <p className="text-xs text-gray-500 truncate">{email}</p>}
         </div>
       </div>
     </div>

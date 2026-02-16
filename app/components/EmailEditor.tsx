@@ -44,6 +44,8 @@ export default function EmailEditor({
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
 
+  console.log(body);
+
   /* ---------------------------------
      Copy (Gmail + Outlook safe)
   --------------------------------- */

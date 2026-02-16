@@ -132,26 +132,38 @@ Client action item:
 Optional user instructions:
 "${extraContext || "None"}"
 
-Generate:
-- subject
-- professional follow-up email
-- polite, clear, confident
-- under 150 words
+Your task:
+Write a professional follow-up email.
 
-Template style:
+Requirements:
+• Tone: polite, clear, confident, human
+• Length: under 150 words
+• Purpose: summarize the meeting and guide next steps
+• Personalize naturally if possible
 
-Hi {{client_name}},
+Formatting rules:
+• Return the email body in clean HTML
+• Use <p> for paragraphs
+• Use <strong> for emphasis if needed
+• Use <ul><li> for bullet points if helpful
+• Do NOT use markdown
+• Do NOT return plain text
 
-[[Introduction]]
+Template structure to follow:
 
-I’m sure improving your {{objective}} is a top priority for you.
-I thought I’d send you “{{content_title}}” for you to review.
+<p>Hi {{client_name}},</p>
 
-{{closing}}
+<p>[[Introduction]]</p>
 
-{{signature}}
+<p>[[Summary of meeting + objectives]]</p>
 
-Return STRICT JSON:
+<p>[[Next steps or call to action]]</p>
+
+<p>{{closing}},<br/>{{signature}}</p>
+
+Output format:
+Return STRICT JSON only. No extra text.
+
 {
   "subject": string,
   "body": string
@@ -183,10 +195,9 @@ Return STRICT JSON:
 
     const aiData = await aiRes.json();
 
-    const outputText =
-      aiData.output
-        ?.find((o: any) => o.type === "message")
-        ?.content?.find((c: any) => c.type === "output_text")?.text;
+    const outputText = aiData.output
+      ?.find((o: any) => o.type === "message")
+      ?.content?.find((c: any) => c.type === "output_text")?.text;
 
     if (!outputText) {
       return NextResponse.json(
