@@ -22,8 +22,8 @@ export default function ClientStep({
   existingEmail?: {
     subject: string;
     body: string;
-    to?: string; // ✅ FIX 1
-    status?: "draft" | "sent"; // ✅ FIX 2
+    to?: string;
+    status?: "draft" | "sent";
   };
 }) {
   /* ---------------------------------
@@ -41,6 +41,23 @@ export default function ClientStep({
   );
 
   const [loading, setLoading] = useState(false);
+  const [templates, setTemplates] = useState<any[]>([]);
+
+  /* ---------------------------------
+     Load templates
+  --------------------------------- */
+  useEffect(() => {
+    async function loadTemplates() {
+      try {
+        const res = await fetch("/api/templates");
+        const data = await res.json();
+        setTemplates(data.templates || []);
+      } catch (err) {
+        console.error("Failed to load templates", err);
+      }
+    }
+    loadTemplates();
+  }, []);
 
   /* ---------------------------------
      Sync from DB (on refresh)
@@ -59,7 +76,13 @@ export default function ClientStep({
   /* ---------------------------------
      Generate Email (AI)
   --------------------------------- */
-  async function handleGenerate(context: string) {
+  async function handleGenerate({
+    context,
+    templateId,
+  }: {
+    context: string;
+    templateId?: string;
+  }) {
     if (loading) return;
 
     try {
@@ -73,6 +96,7 @@ export default function ClientStep({
           recordingId,
           actionItemId,
           extraContext: context,
+          templateId, // ✅ NEW
         }),
       });
 
@@ -114,7 +138,6 @@ export default function ClientStep({
           Row
       =============================== */}
       <div className="flex items-center justify-between gap-4">
-        {/* Left */}
         <div className="flex gap-4">
           <div className="w-2 h-2 mt-2 rounded-full bg-gray-300" />
           <div>
@@ -125,27 +148,12 @@ export default function ClientStep({
           </div>
         </div>
 
-        {/* Right */}
         <button
           disabled={loading}
           onClick={() =>
             hasEmail ? setEditorOpen(true) : setGenerateOpen(true)
           }
-          className="
-            inline-flex
-            items-center
-            gap-2
-            whitespace-nowrap
-            shrink-0
-            rounded-md
-            border border-gray-200
-            px-4 py-2
-            text-xs font-medium
-            text-gray-700
-            hover:bg-gray-50
-            disabled:opacity-60
-            cursor-pointer
-          "
+          className="inline-flex items-center gap-2 whitespace-nowrap shrink-0 rounded-md border border-gray-200 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
         >
           <Mail size={14} />
           {buttonLabel}
@@ -159,6 +167,7 @@ export default function ClientStep({
         open={generateOpen}
         onClose={() => setGenerateOpen(false)}
         onGenerate={handleGenerate}
+        templates={templates} // ✅ NEW
       />
 
       {/* ===============================
@@ -183,7 +192,7 @@ export default function ClientStep({
                   setSubject(subject);
                   setEmail(body);
                   setTo(to);
-                  setStatus(status); // ✅ keeps sent state in sync
+                  setStatus(status);
                 }}
               />
             </div>

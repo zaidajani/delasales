@@ -8,18 +8,21 @@ export default function GenerateEmailModal({
   open,
   onClose,
   onGenerate,
+  templates = [],
 }: {
   open: boolean;
   onClose: () => void;
-  onGenerate: (context: string) => Promise<void> | void;
+  onGenerate: (data: { context: string; templateId?: string }) => Promise<void> | void;
+  templates?: any[];
 }) {
   const [context, setContext] = useState("");
+  const [templateId, setTemplateId] = useState("");
   const [generating, setGenerating] = useState(false);
 
-  // Reset state when modal closes
   useEffect(() => {
     if (!open) {
       setContext("");
+      setTemplateId("");
       setGenerating(false);
     }
   }, [open]);
@@ -31,20 +34,18 @@ export default function GenerateEmailModal({
 
     try {
       setGenerating(true);
-      await onGenerate(context);
+      await onGenerate({ context, templateId });
     } finally {
-      // ❗ Do NOT close modal here
-      // Parent decides when to close after success
       setGenerating(false);
     }
   }
 
+  const selectedTemplate = templates.find(t => t._id === templateId);
+
   return (
     <Portal>
-      {/* Overlay */}
       <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-md" />
 
-      {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
         <div className="w-full max-w-xl rounded-2xl bg-white border border-gray-100 shadow-[0_20px_40px_rgba(0,0,0,0.08)] overflow-hidden">
           
@@ -62,14 +63,42 @@ export default function GenerateEmailModal({
             <button
               onClick={onClose}
               disabled={generating}
-              className="cursor-pointer rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
+              className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
             >
               <X size={18} />
             </button>
           </div>
 
           {/* Body */}
-          <div className="px-6 py-5 space-y-4">
+          <div className="px-6 py-5 space-y-5">
+
+            {/* Template selector */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Template
+              </label>
+
+              <select
+                value={templateId}
+                onChange={(e) => setTemplateId(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm"
+              >
+                <option value="">Default AI template</option>
+                {templates.map((t) => (
+                  <option key={t._id} value={t._id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+
+              {selectedTemplate && (
+                <p className="text-xs text-gray-500 mt-2">
+                  {selectedTemplate.subject || "No subject"}
+                </p>
+              )}
+            </div>
+
+            {/* Optional instructions */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Optional instructions
@@ -94,7 +123,9 @@ export default function GenerateEmailModal({
             {/* Hint */}
             <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700">
               <Sparkles size={14} />
-              Uses the default follow-up template.
+              {templateId
+                ? "AI will use your selected template."
+                : "AI will generate using its default template."}
             </div>
           </div>
 
@@ -103,7 +134,7 @@ export default function GenerateEmailModal({
             <button
               onClick={onClose}
               disabled={generating}
-              className="cursor-pointer text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50"
+              className="text-sm text-gray-600 hover:text-gray-800 disabled:opacity-50"
             >
               Cancel
             </button>
@@ -114,8 +145,8 @@ export default function GenerateEmailModal({
               className={`inline-flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-medium text-white transition
                 ${generating
                   ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-gray-900 hover:bg-black cursor-pointer"
-                }`}
+                  : "bg-gray-900 hover:bg-black"}
+              `}
             >
               <Sparkles size={16} />
               {generating ? "Generating…" : "Generate Email"}
