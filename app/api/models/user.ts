@@ -112,6 +112,14 @@ const RecordingSchema = new mongoose.Schema(
           enum: ["gmail", "outlook"],
         },
 
+        chat: [
+          {
+            role: String, // "user" | "assistant"
+            content: String,
+            createdAt: Date,
+          },
+        ],
+
         messageId: String,
         threadId: String, // Gmail
         conversationId: String, // Outlook

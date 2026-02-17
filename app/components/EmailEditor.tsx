@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Copy, Send, Save, X } from "lucide-react";
 import TipTapEditor from "@/app/components/TipTapEditor";
+import EmailCopilotPanel from "./EmailCopilotPanel";
 
 /* ---------------------------------
    HTML → Plain text (clipboard fallback)
@@ -19,7 +20,7 @@ function htmlToPlainText(html: string) {
 export default function EmailEditor({
   subject: initialSubject,
   body: initialBody,
-  status: initialStatus, // ✅ ADD
+  status: initialStatus,
   to: initialTo,
   clerkUserId,
   recordingId,
@@ -35,7 +36,12 @@ export default function EmailEditor({
   recordingId: string;
   actionItemId?: string;
   onClose: () => void;
-  onSaved: (data: { subject: string; body: string; to: string }) => void;
+  onSaved: (data: {
+    subject: string;
+    body: string;
+    to: string;
+    status?: "draft" | "sent";
+  }) => void;
 }) {
   const [to, setTo] = useState(initialTo || "");
   const [subject, setSubject] = useState(initialSubject);
@@ -44,29 +50,20 @@ export default function EmailEditor({
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
 
-  console.log(body);
-
   /* ---------------------------------
-     Copy (Gmail + Outlook safe)
+     Copy
   --------------------------------- */
   async function copyToClipboard() {
-    try {
-      const plainText = htmlToPlainText(body);
-
-      const clipboardItem = new ClipboardItem({
-        "text/html": new Blob([body], { type: "text/html" }),
-        "text/plain": new Blob([plainText], { type: "text/plain" }),
-      });
-
-      await navigator.clipboard.write([clipboardItem]);
-    } catch (err) {
-      console.error("Clipboard copy failed:", err);
-      alert("Failed to copy email");
-    }
+    const plainText = htmlToPlainText(body);
+    const clipboardItem = new ClipboardItem({
+      "text/html": new Blob([body], { type: "text/html" }),
+      "text/plain": new Blob([plainText], { type: "text/plain" }),
+    });
+    await navigator.clipboard.write([clipboardItem]);
   }
 
   /* ---------------------------------
-     Save email (MongoDB)
+     Save email
   --------------------------------- */
   async function handleSave() {
     if (!to || !subject || !body) {
@@ -92,12 +89,11 @@ export default function EmailEditor({
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || "Failed to save email");
+        throw new Error(err.error);
       }
 
-      onSaved({ subject, body, to });
-
-      alert("Email saved successfully");
+      onSaved({ subject, body, to, status });
+      alert("Email saved");
     } catch (err) {
       console.error(err);
       alert("Failed to save email");
@@ -107,11 +103,11 @@ export default function EmailEditor({
   }
 
   /* ---------------------------------
-     Send Gmail
+     Send email
   --------------------------------- */
   async function handleSend() {
     if (!to || !subject || !body) {
-      alert("Please fill To, Subject and Email body");
+      alert("Please fill To, Subject and Body");
       return;
     }
 
@@ -127,26 +123,24 @@ export default function EmailEditor({
           to,
           subject,
           html: body,
-          type: actionItemId ? "action" : "summary",
         }),
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.error || "Failed to send email");
-        return;
-      }
+      if (!res.ok) throw new Error(data.error);
 
       setStatus("sent");
       alert("Email sent 🎉");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to send");
     } finally {
       setSending(false);
     }
   }
 
   /* ---------------------------------
-     Close on ESC
+     ESC close
   --------------------------------- */
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -157,7 +151,7 @@ export default function EmailEditor({
   }, [onClose]);
 
   return (
-    <div className="relative w-full max-w-4xl h-[85vh] rounded-2xl border border-gray-200 bg-white shadow-xl flex flex-col">
+    <div className="relative w-full max-w-5xl h-[85vh] rounded-2xl border border-gray-200 bg-white shadow-xl flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4">
         <h3 className="text-base font-semibold">Compose Email</h3>
@@ -165,7 +159,7 @@ export default function EmailEditor({
         <div className="flex items-center gap-2">
           <button
             onClick={copyToClipboard}
-            className="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-200"
+            className="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 text-sm"
           >
             <Copy size={16} />
             Copy
@@ -174,7 +168,7 @@ export default function EmailEditor({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm text-white"
           >
             <Save size={16} />
             {saving ? "Saving…" : "Save"}
@@ -183,54 +177,56 @@ export default function EmailEditor({
           <button
             onClick={handleSend}
             disabled={sending || status === "sent"}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium text-white transition
-    ${
-      status === "sent"
-        ? "bg-emerald-500 cursor-not-allowed"
-        : sending
-          ? "bg-gray-400 cursor-not-allowed"
-          : "bg-emerald-600 hover:bg-emerald-700"
-    }
-  `}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm text-white"
           >
             <Send size={16} />
             {status === "sent" ? "Sent ✓" : sending ? "Sending…" : "Send"}
           </button>
 
-          <button
-            onClick={onClose}
-            className="ml-1 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-          >
+          <button onClick={onClose} className="ml-1 p-2 text-gray-400">
             <X size={18} />
           </button>
         </div>
       </div>
 
-      {/* To Field */}
-      <div className="px-4 pt-2">
+      {/* To */}
+      <div className="px-4">
         <input
-          type="email"
           value={to}
           onChange={(e) => setTo(e.target.value)}
-          placeholder="Recipient email (e.g. client@example.com)"
-          className="w-full rounded-xl mb-4 border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          placeholder="Recipient email"
+          className="w-full rounded-xl mb-3 border px-4 py-3 text-sm"
         />
       </div>
 
       {/* Subject */}
       <div className="px-4">
         <input
-          type="text"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           placeholder="Email subject"
-          className="w-full rounded-xl mb-5 border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+          className="w-full rounded-xl mb-4 border px-4 py-3 text-sm"
         />
       </div>
 
-      {/* Editor */}
-      <div className="flex-1 overflow-hidden px-4 pb-4">
-        <TipTapEditor content={body} onChange={setBody} />
+      {/* Editor + Copilot */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Editor */}
+        <div className="flex-1 px-4 pb-4 overflow-hidden">
+          <TipTapEditor content={body} onChange={setBody} />
+        </div>
+
+        {/* Copilot */}
+        <div className="w-80">
+          <EmailCopilotPanel
+            clerkUserId={clerkUserId}
+            recordingId={recordingId}
+            actionItemId={actionItemId!}
+            emailHtml={body}
+            onApply={setBody}
+            isOpen={true} // modal is open
+          />
+        </div>
       </div>
     </div>
   );
