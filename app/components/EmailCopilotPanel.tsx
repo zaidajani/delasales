@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Send, Sparkles } from "lucide-react";
+import { Sparkles, Send } from "lucide-react";
 
 /* ===============================
    Types
@@ -33,9 +33,8 @@ export default function EmailCopilotPanel({
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
   const [loadingChat, setLoadingChat] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   /* ===============================
      Load chat when modal opens
@@ -58,15 +57,9 @@ export default function EmailCopilotPanel({
         });
 
         const data = await res.json();
-
-        if (!res.ok) throw new Error(data.error || "Failed to load chat");
+        if (!res.ok) throw new Error(data.error);
 
         setMessages(data.chat || []);
-
-        // ✅ Only apply body if editor is empty
-        if (!emailHtml && data.body) {
-          onApply(data.body);
-        }
       } catch (err) {
         console.error("Chat load failed", err);
       } finally {
@@ -75,28 +68,17 @@ export default function EmailCopilotPanel({
     }
 
     loadChat();
-  }, [isOpen, clerkUserId, recordingId, actionItemId, emailHtml, onApply]);
+  }, [isOpen, clerkUserId, recordingId, actionItemId]);
 
   /* ===============================
-     Send refinement
+     Send instruction
   =============================== */
   async function handleSend() {
     const instruction = input.trim();
     if (!instruction) return;
 
-    if (!clerkUserId || !recordingId || !actionItemId) {
-      alert("Missing identifiers");
-      return;
-    }
-
-    if (!emailHtml) {
-      alert("Email not ready");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
     setInput("");
+    setLoading(true);
 
     try {
       const res = await fetch("/api/email/refine", {
@@ -112,15 +94,12 @@ export default function EmailCopilotPanel({
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
 
-      if (!res.ok) throw new Error(data.error || "Refinement failed");
-
-      // ✅ Trust server as source of truth
       setMessages(data.chat || []);
       onApply(data.body);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message);
+    } catch (err) {
+      console.error("Refine error:", err);
     } finally {
       setLoading(false);
     }
@@ -130,58 +109,79 @@ export default function EmailCopilotPanel({
      UI
   =============================== */
   return (
-    <div className="flex h-full flex-col border-l border-gray-200 bg-gray-50">
-      <div className="flex items-center gap-2 px-4 py-3 border-b bg-white">
-        <Sparkles size={16} className="text-blue-600" />
-        <span className="text-sm font-medium">AI Copilot</span>
+    <div className="flex h-full flex-col bg-white">
+      {/* HEADER */}
+      <div className="h-14 px-4 border-b border-gray-100 flex items-center">
+        <div className="flex items-center gap-2">
+          <Sparkles size={16} className="text-indigo-500" />
+          <span className="text-sm font-semibold text-gray-900">
+            AI Copilot
+          </span>
+        </div>
       </div>
 
-      {/* Chat */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {loadingChat ? (
-          <div className="text-xs text-gray-400">Loading conversation…</div>
-        ) : error ? (
-          <div className="text-xs text-red-500">{error}</div>
-        ) : messages.length === 0 ? (
-          <div className="text-xs text-gray-400">
-            Ask AI to refine your email.
+      {/* CHAT */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {/* Empty state */}
+        {messages.length === 0 && !loadingChat && (
+          <div className="flex flex-col items-center justify-center pt-10 opacity-60">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white mb-3 shadow-sm">
+              <Sparkles size={18} />
+            </div>
+            <h3 className="text-sm font-medium text-gray-900">
+              AI Assistant Active
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Ask me to refine or improve your email.
+            </p>
           </div>
-        ) : (
-          messages.map((m, i) => (
+        )}
+
+        {/* Messages */}
+        {messages.map((m, i) => (
+          <div
+            key={i}
+            className={`flex ${
+              m.role === "user" ? "justify-end pl-8" : "pr-8"
+            }`}
+          >
             <div
-              key={i}
-              className={`text-sm px-3 py-2 rounded-lg max-w-[85%] whitespace-pre-wrap ${
+              className={`px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${
                 m.role === "user"
-                  ? "ml-auto bg-blue-600 text-white"
-                  : "bg-white border"
+                  ? "bg-blue-600 text-white rounded-tr-sm"
+                  : "bg-gray-100 text-gray-800 rounded-tl-sm"
               }`}
             >
               {m.content}
             </div>
-          ))
-        )}
+          </div>
+        ))}
       </div>
 
-      {/* Input */}
-      <div className="p-3 border-t bg-white">
-        <div className="flex items-center gap-2">
+      {/* INPUT */}
+      <div className="p-4 pt-0">
+        <div className="relative bg-gray-100 rounded-full focus-within:ring-1 focus-within:ring-gray-300">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            disabled={loading || loadingChat}
             placeholder="Refine the email…"
-            className="flex-1 rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-100"
+            className="w-full bg-transparent px-4 py-3 pr-12 text-sm outline-none"
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            disabled={loading}
           />
 
           <button
             onClick={handleSend}
-            disabled={loading || loadingChat}
-            className="p-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-60"
+            disabled={loading}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-white rounded-full shadow hover:bg-gray-50"
           >
-            <Send size={16} />
+            <Send size={16} className="text-gray-600" />
           </button>
         </div>
+
+        <p className="text-[10px] text-gray-400 text-center mt-2">
+          AI can make mistakes. Verify important details.
+        </p>
       </div>
     </div>
   );

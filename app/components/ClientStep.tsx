@@ -37,7 +37,7 @@ export default function ClientStep({
   const [to, setTo] = useState<string>("");
 
   const [status, setStatus] = useState<"draft" | "sent">(
-    existingEmail?.status ?? "draft"
+    existingEmail?.status ?? "draft",
   );
 
   const [loading, setLoading] = useState(false);
@@ -126,8 +126,8 @@ export default function ClientStep({
   const buttonLabel = loading
     ? "Generating…"
     : hasEmail
-    ? "Show Email"
-    : "Generate Email";
+      ? "Show Email"
+      : "Generate Email";
 
   /* ---------------------------------
      Render
@@ -142,9 +142,7 @@ export default function ClientStep({
           <div className="w-2 h-2 mt-2 rounded-full bg-gray-300" />
           <div>
             <p className="text-sm font-medium">{title}</p>
-            {meta && (
-              <div className="mt-1 text-xs text-gray-500">{meta}</div>
-            )}
+            {meta && <div className="mt-1 text-xs text-gray-500">{meta}</div>}
           </div>
         </div>
 
@@ -177,8 +175,8 @@ export default function ClientStep({
         <Portal>
           <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
 
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-            <div className="w-full max-w-3xl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="w-[94vw] max-w-[1400px] h-[92vh]">
               <EmailEditor
                 subject={subject}
                 body={email}

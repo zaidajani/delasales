@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, Send, Save, X } from "lucide-react";
-import TipTapEditor from "@/app/components/TipTapEditor";
+import { Copy, Send, Save, X, Mail } from "lucide-react";
+import TipTapMail from "@/app/components/TipTapMail";
 import EmailCopilotPanel from "./EmailCopilotPanel";
 
 /* ---------------------------------
@@ -151,80 +151,139 @@ export default function EmailEditor({
   }, [onClose]);
 
   return (
-    <div className="relative w-full max-w-5xl h-[85vh] rounded-2xl border border-gray-200 bg-white shadow-xl flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4">
-        <h3 className="text-base font-semibold">Compose Email</h3>
+    <div className="relative w-full h-full rounded-3xl bg-white shadow-xl border border-gray-100 flex flex-col overflow-hidden">
+      {/* ================= Header ================= */}
+      <div className="px-6 pt-5 pb-4 bg-white">
+        <div className="flex items-center justify-between">
+          {/* Left */}
+          <div className="flex items-center gap-3">
+            {/* <div className="p-2.5 bg-blue-50 rounded-xl text-blue-600 flex items-center justify-center">
+              <Mail size={18} />
+            </div> */}
+            <div className="flex flex-col">
+              <h3 className="text-lg font-semibold text-gray-900 tracking-tight">
+                Generate Follow-up
+              </h3>
+              <span className="text-xs text-gray-400 font-medium">
+                New Email
+              </span>
+            </div>
+          </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={copyToClipboard}
-            className="inline-flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 text-sm"
-          >
-            <Copy size={16} />
-            Copy
-          </button>
+          {/* Right Actions */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={copyToClipboard}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 hover:border-gray-300 transition"
+            >
+              <Copy size={16} className="text-gray-400" />
+              <span className="text-xs font-medium">Copy</span>
+            </button>
 
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm text-white"
-          >
-            <Save size={16} />
-            {saving ? "Saving…" : "Save"}
-          </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#B3E5FC] text-blue-900 hover:bg-[#a1dffc] transition"
+            >
+              <Save size={16} className="text-blue-800" />
+              <span className="text-xs font-medium">
+                {saving ? "Saving…" : "Save"}
+              </span>
+            </button>
 
-          <button
-            onClick={handleSend}
-            disabled={sending || status === "sent"}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm text-white"
-          >
-            <Send size={16} />
-            {status === "sent" ? "Sent ✓" : sending ? "Sending…" : "Send"}
-          </button>
+            <button
+              onClick={handleSend}
+              disabled={sending || status === "sent"}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#B7E4C7] text-green-900 hover:bg-[#a2dec0] transition"
+            >
+              <Send size={16} className="text-green-800" />
+              <span className="text-xs font-medium">
+                {status === "sent" ? "Sent ✓" : sending ? "Sending…" : "Send"}
+              </span>
+            </button>
 
-          <button onClick={onClose} className="ml-1 p-2 text-gray-400">
-            <X size={18} />
-          </button>
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-50 transition"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        {/* Separator */}
+        <div className="mt-4 h-px bg-gray-100 w-full" />
+      </div>
+
+      {/* ================= Form Fields ================= */}
+      {/* Recipient + Subject (side by side) */}
+      <div className="px-6 pb-2">
+        <div className="grid grid-cols-2 gap-4">
+          {/* Recipient */}
+          <div className="group">
+            <label className="block text-[11px] font-medium text-gray-500 mb-1 ml-1 tracking-wide">
+              RECIPIENT
+            </label>
+
+            <div className="relative flex items-center">
+              <div className="absolute left-3 text-gray-400 group-focus-within:text-blue-500 transition">
+                <Mail size={14} />
+              </div>
+
+              <input
+                type="email"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                placeholder="name@example.com"
+                className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[13px] text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-50 transition shadow-sm"
+              />
+            </div>
+          </div>
+
+          {/* Subject */}
+          <div className="group">
+            <label className="block text-[11px] font-medium text-gray-500 mb-1 ml-1 tracking-wide">
+              SUBJECT
+            </label>
+
+            <div className="relative flex items-center">
+              <div className="absolute left-3 text-gray-400 group-focus-within:text-purple-500 transition">
+                <Mail size={14} />
+              </div>
+
+              <input
+                type="text"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Enter email subject"
+                className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[13px] text-gray-900 placeholder-gray-400 focus:outline-none focus:bg-white focus:border-purple-300 focus:ring-2 focus:ring-purple-50 transition shadow-sm"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* To */}
-      <div className="px-4">
-        <input
-          value={to}
-          onChange={(e) => setTo(e.target.value)}
-          placeholder="Recipient email"
-          className="w-full rounded-xl mb-3 border px-4 py-3 text-sm"
-        />
-      </div>
-
-      {/* Subject */}
-      <div className="px-4">
-        <input
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-          placeholder="Email subject"
-          className="w-full rounded-xl mb-4 border px-4 py-3 text-sm"
-        />
-      </div>
-
-      {/* Editor + Copilot */}
+      {/* ================= Editor + Copilot ================= */}
       <div className="flex flex-1 overflow-hidden">
         {/* Editor */}
-        <div className="flex-1 px-4 pb-4 overflow-hidden">
-          <TipTapEditor content={body} onChange={setBody} />
+        <div className="flex-[7] bg-[#F3F4F6] px-6 pb-6 overflow-auto mt-5">
+          <div className="mx-auto max-w-[760px]">
+            {/* Word-style page */}
+            <div className="mx-auto max-w-[760px] pt-6">
+              <TipTapMail content={body} onChange={setBody} />
+            </div>
+          </div>
         </div>
 
         {/* Copilot */}
-        <div className="w-80">
+        <div className="flex-[3] min-w-[360px] max-w-[420px]">
           <EmailCopilotPanel
             clerkUserId={clerkUserId}
             recordingId={recordingId}
             actionItemId={actionItemId!}
             emailHtml={body}
             onApply={setBody}
-            isOpen={true} // modal is open
+            isOpen={true}
           />
         </div>
       </div>
