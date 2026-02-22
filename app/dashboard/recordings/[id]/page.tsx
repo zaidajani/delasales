@@ -7,10 +7,13 @@ import AddActionItem from "@/app/components/AddActionItem";
 import AddClientTask from "@/app/components/AddClientTask";
 import GenerateFollowUpBar from "@/app/components/GenerateFollowUpBar";
 
+/* ---------------------------------
+   Fetch recording (SSR)
+--------------------------------- */
 async function getRecording(id: string) {
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_APP_URL}/api/recordings/${id}`,
-    { cache: "no-store" },
+    { cache: "no-store" }
   );
 
   if (!res.ok) {
@@ -22,6 +25,9 @@ async function getRecording(id: string) {
   return res.json();
 }
 
+/* =====================================
+   PAGE
+===================================== */
 export default async function ProductSyncPage({
   params,
 }: {
@@ -37,7 +43,6 @@ export default async function ProductSyncPage({
     return (
       <main className="flex-1 overflow-y-auto bg-white">
         <div className="max-w-4xl mx-auto px-10 py-12">
-          {/* Header */}
           <header className="mb-10">
             <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
               <span>Yesterday</span>
@@ -50,7 +55,6 @@ export default async function ProductSyncPage({
           </header>
 
           <div className="grid grid-cols-1 gap-12">
-            {/* Transcription */}
             <section className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-medium text-gray-900">
@@ -68,8 +72,6 @@ export default async function ProductSyncPage({
 
             <hr className="border-gray-100" />
 
-            {/* Analysis Section */}
-            {/* Analysis Section */}
             <AnalyseAction
               clerkUserId={recording.clerkUserId}
               recordingId={recording._id}
@@ -81,7 +83,7 @@ export default async function ProductSyncPage({
   }
 
   /* ======================================================
-     🟢 STATE 2 — ANALYSED (ORIGINAL DASHBOARD)
+     🟢 STATE 2 — ANALYSED DASHBOARD
   ====================================================== */
   return (
     <div className="h-screen flex bg-[#f7f8fa] text-gray-900">
@@ -95,26 +97,23 @@ export default async function ProductSyncPage({
               </h1>
 
               <div className="mt-2 flex items-center gap-5 text-sm text-gray-500">
-                {/* ✅ Seller tasks (pending) */}
                 <span>
                   {
                     recording.actionItems.filter(
                       (item: any) =>
-                        item.category === "seller" && !item.completed,
+                        item.category === "seller" && !item.completed
                     ).length
                   }{" "}
                   Tasks
                 </span>
 
-                {/* ✅ Email opportunities = client steps + 1 */}
                 <span>
                   {recording.actionItems.filter(
-                    (item: any) => item.category === "client",
+                    (item: any) => item.category === "client"
                   ).length + 1}{" "}
                   Email Opportunities
                 </span>
 
-                {/* ✅ Participants from DB */}
                 {recording.participants?.length > 0 && (
                   <span className="text-gray-400">
                     {recording.participants.join(", ")}
@@ -123,19 +122,17 @@ export default async function ProductSyncPage({
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <AddActionItem
-                clerkUserId={recording.clerkUserId}
-                recordingId={recording._id}
-              />
-            </div>
+            <AddActionItem
+              clerkUserId={recording.clerkUserId}
+              recordingId={recording._id}
+            />
           </div>
         </header>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-12 pb-24">
           <div className="max-w-6xl mx-auto space-y-14">
-            {/* Action Items */}
+            {/* Seller Tasks */}
             <section className="space-y-5">
               <div className="flex items-center justify-between mt-10">
                 <h2 className="text-lg font-semibold">Your Action Items</h2>
@@ -143,7 +140,7 @@ export default async function ProductSyncPage({
                   {
                     recording.actionItems.filter(
                       (item: any) =>
-                        item.category === "seller" && !item.completed,
+                        item.category === "seller" && !item.completed
                     ).length
                   }{" "}
                   Pending
@@ -155,7 +152,7 @@ export default async function ProductSyncPage({
                   .filter((item: any) => item.category === "seller")
                   .map((item: any) => (
                     <TaskRowClient
-                      key={item._id} // ✅ FIX
+                      key={item._id}
                       title={item.text}
                       completed={item.completed}
                       clerkUserId={recording.clerkUserId}
@@ -163,21 +160,13 @@ export default async function ProductSyncPage({
                       actionItemId={item._id}
                     />
                   ))}
-
-                {recording.actionItems.filter(
-                  (item: any) => item.category === "seller",
-                ).length === 0 && (
-                  <p className="px-6 py-5 text-sm text-gray-400">
-                    No seller action items identified.
-                  </p>
-                )}
               </div>
             </section>
 
             {/* Two Column */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+              {/* LEFT */}
               <div className="lg:col-span-2 space-y-14">
-                {/* Client Steps */}
                 {/* Client Steps */}
                 <section className="space-y-5">
                   <h2 className="text-lg font-semibold">Client Steps</h2>
@@ -194,12 +183,13 @@ export default async function ProductSyncPage({
                           recordingId={recording._id}
                           actionItemId={item._id}
                           existingEmail={recording.emails?.find(
-                            (e: any) => e.actionItemId === item._id,
+                            (e: any) =>
+                              e.actionItemId?.toString() ===
+                              item._id.toString()
                           )}
                         />
                       ))}
 
-                    {/* 👇 ADD HERE */}
                     <AddClientTask
                       clerkUserId={recording.clerkUserId}
                       recordingId={recording._id}
@@ -214,9 +204,8 @@ export default async function ProductSyncPage({
                 </section>
               </div>
 
-              {/* Right */}
+              {/* RIGHT */}
               <div>
-                {/* Risks & Loops */}
                 <section className="space-y-5">
                   <h2 className="text-lg font-semibold">Risks & Loops</h2>
 
@@ -224,12 +213,6 @@ export default async function ProductSyncPage({
                     {recording.risks.map((risk: any, idx: number) => (
                       <Risk key={idx} description={risk.description} />
                     ))}
-
-                    {recording.risks.length === 0 && (
-                      <p className="text-sm text-orange-800/70">
-                        No risks identified.
-                      </p>
-                    )}
                   </div>
                 </section>
               </div>
@@ -237,7 +220,7 @@ export default async function ProductSyncPage({
           </div>
         </div>
 
-        {/* Bottom Bar */}
+        {/* Bottom Summary Email */}
         <GenerateFollowUpBar
           clerkUserId={recording.clerkUserId}
           recordingId={recording._id}
@@ -248,10 +231,13 @@ export default async function ProductSyncPage({
   );
 }
 
+/* ---------------------------------
+   Risk Component
+--------------------------------- */
 function Risk({ title, description }: any) {
   return (
     <div>
-      <p className="text-sm font-medium">{title}</p>
+      {title && <p className="text-sm font-medium">{title}</p>}
       <p className="text-xs text-gray-600 mt-1">{description}</p>
     </div>
   );

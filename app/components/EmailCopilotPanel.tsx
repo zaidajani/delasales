@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sparkles, Send } from "lucide-react";
 
 /* ===============================
    Types
 =============================== */
 type ChatMessage = {
+  id: string;
   role: "user" | "assistant";
   content: string;
 };
@@ -19,6 +20,35 @@ type Props = {
   onApply: (html: string) => void;
   isOpen: boolean;
 };
+
+/* ===============================
+   Typing Indicator
+=============================== */
+function TypingDots() {
+  return (
+    <div className="flex gap-1 px-3 py-2 bg-gray-100 rounded-2xl w-fit">
+      <span className="dot" />
+      <span className="dot" />
+      <span className="dot" />
+      <style jsx>{`
+        .dot {
+          width: 6px;
+          height: 6px;
+          background: #9ca3af;
+          border-radius: 9999px;
+          animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+          0%, 80%, 100% { transform: scale(0); }
+          40% { transform: scale(1); }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 /* ===============================
    Component
@@ -34,10 +64,25 @@ export default function EmailCopilotPanel({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loadingChat, setLoadingChat] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const latestEmailRef = useRef(emailHtml);
+
+  /* 🔥 Always keep latest email */
+  useEffect(() => {
+    latestEmailRef.current = emailHtml;
+  }, [emailHtml]);
 
   /* ===============================
-     Load chat when modal opens
+     Auto scroll
+  =============================== */
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping]);
+
+  /* ===============================
+     Load chat
   =============================== */
   useEffect(() => {
     if (!isOpen) return;
@@ -59,7 +104,13 @@ export default function EmailCopilotPanel({
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
 
-        setMessages(data.chat || []);
+        setMessages(
+          (data.chat || []).map((m: any) => ({
+            id: crypto.randomUUID(),
+            role: m.role,
+            content: m.content,
+          }))
+        );
       } catch (err) {
         console.error("Chat load failed", err);
       } finally {
@@ -75,10 +126,19 @@ export default function EmailCopilotPanel({
   =============================== */
   async function handleSend() {
     const instruction = input.trim();
-    if (!instruction) return;
+    if (!instruction || isTyping) return;
 
     setInput("");
-    setLoading(true);
+
+    /* Optimistic message */
+    const userMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: instruction,
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setIsTyping(true);
 
     try {
       const res = await fetch("/api/email/refine", {
@@ -89,19 +149,39 @@ export default function EmailCopilotPanel({
           recordingId,
           actionItemId,
           instruction,
-          emailHtml,
+          emailHtml: latestEmailRef.current, // 🔥 always latest
         }),
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      setMessages(data.chat || []);
-      onApply(data.body);
+      const assistantReply =
+        data.chat?.at(-1)?.content ||
+        "Email updated based on your request.";
+
+      const assistantMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: assistantReply,
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+
+      if (data.body) onApply(data.body);
     } catch (err) {
       console.error("Refine error:", err);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: "Something went wrong. Please try again.",
+        },
+      ]);
     } finally {
-      setLoading(false);
+      setIsTyping(false);
     }
   }
 
@@ -122,7 +202,6 @@ export default function EmailCopilotPanel({
 
       {/* CHAT */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {/* Empty state */}
         {messages.length === 0 && !loadingChat && (
           <div className="flex flex-col items-center justify-center pt-10 opacity-60">
             <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white mb-3 shadow-sm">
@@ -137,10 +216,9 @@ export default function EmailCopilotPanel({
           </div>
         )}
 
-        {/* Messages */}
-        {messages.map((m, i) => (
+        {messages.map((m) => (
           <div
-            key={i}
+            key={m.id}
             className={`flex ${
               m.role === "user" ? "justify-end pl-8" : "pr-8"
             }`}
@@ -156,6 +234,14 @@ export default function EmailCopilotPanel({
             </div>
           </div>
         ))}
+
+        {isTyping && (
+          <div className="flex pr-8">
+            <TypingDots />
+          </div>
+        )}
+
+        <div ref={chatEndRef} />
       </div>
 
       {/* INPUT */}
@@ -167,13 +253,13 @@ export default function EmailCopilotPanel({
             placeholder="Refine the email…"
             className="w-full bg-transparent px-4 py-3 pr-12 text-sm outline-none"
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            disabled={loading}
+            disabled={isTyping}
           />
 
           <button
             onClick={handleSend}
-            disabled={loading}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-white rounded-full shadow hover:bg-gray-50"
+            disabled={isTyping}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-white rounded-full shadow hover:bg-gray-50 disabled:opacity-50"
           >
             <Send size={16} className="text-gray-600" />
           </button>

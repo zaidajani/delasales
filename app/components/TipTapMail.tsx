@@ -4,6 +4,7 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import { Bold, Italic, Underline as UnderlineIcon } from "lucide-react";
+import { useEffect } from "react";
 
 export default function TipTapMail({
   content,
@@ -27,11 +28,21 @@ export default function TipTapMail({
     },
   });
 
+  // ✅ Sync editor when parent content changes (AI updates, etc.)
+  useEffect(() => {
+    if (!editor) return;
+
+    const currentHTML = editor.getHTML();
+    if (currentHTML !== content) {
+      editor.commands.setContent(content, false);
+    }
+  }, [content, editor]);
+
   if (!editor) return null;
 
   return (
     <div className="flex flex-col gap-3">
-      {/* ✨ Toolbar OUTSIDE the page */}
+      {/* Toolbar */}
       <div className="flex items-center gap-2 text-gray-500">
         <button
           onClick={() => editor.chain().focus().toggleBold().run()}
@@ -61,7 +72,7 @@ export default function TipTapMail({
         </button>
       </div>
 
-      {/* ✨ Word-style page */}
+      {/* Word-style page */}
       <div className="bg-white border border-gray-200 rounded-md shadow-[0_1px_3px_rgba(0,0,0,0.08)] px-10 py-12 min-h-[700px]">
         <EditorContent editor={editor} />
       </div>
