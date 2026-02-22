@@ -19,6 +19,7 @@ type Props = {
   emailHtml: string;
   onApply: (html: string) => void;
   isOpen: boolean;
+  disabled?: boolean;
 };
 
 /* ===============================
@@ -38,12 +39,22 @@ function TypingDots() {
           border-radius: 9999px;
           animation: bounce 1.4s infinite ease-in-out both;
         }
-        .dot:nth-child(1) { animation-delay: -0.32s; }
-        .dot:nth-child(2) { animation-delay: -0.16s; }
+        .dot:nth-child(1) {
+          animation-delay: -0.32s;
+        }
+        .dot:nth-child(2) {
+          animation-delay: -0.16s;
+        }
 
         @keyframes bounce {
-          0%, 80%, 100% { transform: scale(0); }
-          40% { transform: scale(1); }
+          0%,
+          80%,
+          100% {
+            transform: scale(0);
+          }
+          40% {
+            transform: scale(1);
+          }
         }
       `}</style>
     </div>
@@ -60,6 +71,7 @@ export default function EmailCopilotPanel({
   emailHtml,
   onApply,
   isOpen,
+  disabled = false,
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -109,7 +121,7 @@ export default function EmailCopilotPanel({
             id: crypto.randomUUID(),
             role: m.role,
             content: m.content,
-          }))
+          })),
         );
       } catch (err) {
         console.error("Chat load failed", err);
@@ -157,8 +169,7 @@ export default function EmailCopilotPanel({
       if (!res.ok) throw new Error(data.error);
 
       const assistantReply =
-        data.chat?.at(-1)?.content ||
-        "Email updated based on your request.";
+        data.chat?.at(-1)?.content || "Email updated based on your request.";
 
       const assistantMessage: ChatMessage = {
         id: crypto.randomUUID(),
@@ -246,20 +257,26 @@ export default function EmailCopilotPanel({
 
       {/* INPUT */}
       <div className="p-4 pt-0">
-        <div className="relative bg-gray-100 rounded-full focus-within:ring-1 focus-within:ring-gray-300">
+        <div
+          className={`relative bg-gray-100 rounded-full ${
+            disabled
+              ? "opacity-50 cursor-not-allowed"
+              : "focus-within:ring-1 focus-within:ring-gray-300"
+          }`}
+        >
+          {" "}
           <input
+            disabled={disabled}
+            placeholder={disabled ? "Email already sent" : "Refine the email…"}
+            className="w-full bg-transparent px-4 py-3 pr-12 text-sm outline-none disabled:cursor-not-allowed"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Refine the email…"
-            className="w-full bg-transparent px-4 py-3 pr-12 text-sm outline-none"
             onKeyDown={(e) => e.key === "Enter" && handleSend()}
-            disabled={isTyping}
           />
-
           <button
+            disabled={disabled}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-white rounded-full shadow disabled:cursor-not-allowed"
             onClick={handleSend}
-            disabled={isTyping}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-white rounded-full shadow hover:bg-gray-50 disabled:opacity-50"
           >
             <Send size={16} className="text-gray-600" />
           </button>

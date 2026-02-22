@@ -9,13 +9,16 @@ import { useEffect } from "react";
 export default function TipTapMail({
   content,
   onChange,
+  editable = true,
 }: {
   content: string;
   onChange: (html: string) => void;
+  editable?: boolean;
 }) {
   const editor = useEditor({
     extensions: [StarterKit, Underline],
     content,
+    editable,
     immediatelyRender: false,
     editorProps: {
       attributes: {
@@ -24,7 +27,7 @@ export default function TipTapMail({
       },
     },
     onUpdate({ editor }) {
-      onChange(editor.getHTML());
+      if (editable) onChange(editor.getHTML());
     },
   });
 

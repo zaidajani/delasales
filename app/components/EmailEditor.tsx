@@ -44,6 +44,8 @@ export default function EmailEditor({
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
 
+  const isLocked = status === "sent";
+
   /* ================= COPY ================= */
   async function copyToClipboard() {
     try {
@@ -169,7 +171,7 @@ export default function EmailEditor({
 
             <button
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || isLocked}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#B3E5FC] text-blue-900"
             >
               <Save size={16} />
@@ -206,10 +208,14 @@ export default function EmailEditor({
           <div>
             <label className="text-[11px] text-gray-500 ml-1">RECIPIENT</label>
             <div className="relative mt-1">
-              <Mail className="absolute left-3 top-2.5 text-gray-400" size={14} />
+              <Mail
+                className="absolute left-3 top-2.5 text-gray-400"
+                size={14}
+              />
               <input
                 value={to}
                 onChange={(e) => updateMail({ to: e.target.value })}
+                disabled={isLocked}
                 className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[13px]"
                 placeholder="name@example.com"
               />
@@ -220,9 +226,13 @@ export default function EmailEditor({
           <div>
             <label className="text-[11px] text-gray-500 ml-1">SUBJECT</label>
             <div className="relative mt-1">
-              <Mail className="absolute left-3 top-2.5 text-gray-400" size={14} />
+              <Mail
+                className="absolute left-3 top-2.5 text-gray-400"
+                size={14}
+              />
               <input
                 value={subject}
+                disabled={isLocked}
                 onChange={(e) => updateMail({ subject: e.target.value })}
                 className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[13px]"
                 placeholder="Enter email subject"
@@ -235,13 +245,29 @@ export default function EmailEditor({
       {/* EDITOR + COPILOT */}
       <div className="flex flex-1 overflow-hidden">
         {/* Editor */}
-        <div className="flex-[7] bg-[#F3F4F6] px-6 pb-6 overflow-auto mt-5">
+        <div
+          className={`flex-[7] bg-[#F3F4F6] px-6 pb-6 overflow-auto mt-5 ${
+            isLocked ? "opacity-70" : ""
+          }`}
+        >
+          {" "}
           <div className="mx-auto max-w-[760px] pt-6">
             <TipTapMail
               content={body}
+              editable={!isLocked}
               onChange={(html) => {
+                if (isLocked) return; // 🔒 prevent edits when sent
+
+                // 🔄 update context (source of truth)
                 updateMail({ body: html });
-                onSaved({ subject, body: html, to, status });
+
+                // 🔄 keep parent in sync
+                onSaved({
+                  subject,
+                  body: html,
+                  to,
+                  status,
+                });
               }}
             />
           </div>
@@ -254,7 +280,9 @@ export default function EmailEditor({
             recordingId={recordingId}
             actionItemId={actionItemId}
             emailHtml={body}
+            disabled={isLocked} // 🔒 THIS enables lock
             onApply={(newHtml) => {
+              if (isLocked) return; // 🔒 safety guard
               updateMail({ body: newHtml });
               onSaved({ subject, body: newHtml, to, status });
             }}
