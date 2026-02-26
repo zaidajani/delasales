@@ -120,6 +120,7 @@ const RecordingSchema = new mongoose.Schema(
           },
         ],
 
+        scheduledAt: { type: Date, required: false },
         messageId: String,
         threadId: String, // Gmail
         conversationId: String, // Outlook

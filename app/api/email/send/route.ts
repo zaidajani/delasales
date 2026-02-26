@@ -6,13 +6,33 @@ import { auth } from "@clerk/nextjs/server";
 
 /* =========================================================
    POST /api/email/send
+   Supports:
+   ✅ Clerk session
+   ✅ Internal scheduler (secret header)
 ========================================================= */
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    /* =====================================================
+       🔐 AUTHENTICATION
+    ===================================================== */
 
-    if (!userId) {
+    const { userId } = await auth();
+    const internalSecret = req.headers.get("x-internal-secret");
+
+    const body = await req.json();
+
+    // Allow either Clerk session OR internal secret
+    if (!userId && internalSecret !== process.env.INTERNAL_API_SECRET) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const effectiveUserId = userId || body.clerkUserId;
+
+    if (!effectiveUserId) {
+      return NextResponse.json(
+        { error: "Missing clerkUserId for internal call" },
+        { status: 400 },
+      );
     }
 
     const {
@@ -22,7 +42,7 @@ export async function POST(req: NextRequest) {
       recordingId,
       actionItemId,
       type, // "action" | "summary"
-    } = await req.json();
+    } = body;
 
     if (!to || !subject || !html || !recordingId || !type) {
       return NextResponse.json(
@@ -33,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     await connectToDatabase();
 
-    const user = await User.findOne({ clerkUserId: userId });
+    const user = await User.findOne({ clerkUserId: effectiveUserId });
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -54,9 +74,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    /* =====================================================
-       Variables to store provider metadata
-    ===================================================== */
     let messageId: string | undefined;
     let threadId: string | undefined;
     let conversationId: string | undefined;
@@ -77,7 +94,6 @@ export async function POST(req: NextRequest) {
 
       const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-      // UTF-8 safe subject
       const encodedSubject = `=?UTF-8?B?${Buffer.from(subject).toString(
         "base64",
       )}?=`;
@@ -87,7 +103,6 @@ export async function POST(req: NextRequest) {
         `Subject: ${encodedSubject}`,
         "MIME-Version: 1.0",
         "Content-Type: text/html; charset=UTF-8",
-        "Content-Transfer-Encoding: 7bit",
         "",
         html,
       ].join("\r\n");
@@ -108,17 +123,9 @@ export async function POST(req: NextRequest) {
     }
 
     /* =====================================================
-       📩 SEND VIA OUTLOOK (Microsoft Graph)
+       📩 SEND VIA OUTLOOK
     ===================================================== */
     if (provider === "outlook") {
-      if (!user.outlook?.refreshToken) {
-        return NextResponse.json(
-          { error: "Outlook not connected" },
-          { status: 400 },
-        );
-      }
-
-      // 🔹 Exchange refresh token → access token
       const tokenRes = await fetch(
         `https://login.microsoftonline.com/${process.env.OUTLOOK_TENANT_ID}/oauth2/v2.0/token`,
         {
@@ -127,7 +134,7 @@ export async function POST(req: NextRequest) {
           body: new URLSearchParams({
             client_id: process.env.OUTLOOK_CLIENT_ID!,
             client_secret: process.env.OUTLOOK_CLIENT_SECRET!,
-            refresh_token: user.outlook.refreshToken,
+            refresh_token: user.outlook.refreshToken!,
             grant_type: "refresh_token",
             scope: "https://graph.microsoft.com/.default",
           }),
@@ -135,18 +142,8 @@ export async function POST(req: NextRequest) {
       );
 
       const tokenData = await tokenRes.json();
-
-      if (!tokenData.access_token) {
-        console.error("Outlook token error:", tokenData);
-        return NextResponse.json(
-          { error: "Failed to obtain Outlook access token" },
-          { status: 500 },
-        );
-      }
-
       const accessToken = tokenData.access_token;
 
-      // 🔹 Send mail via Microsoft Graph
       const graphRes = await fetch(
         "https://graph.microsoft.com/v1.0/me/sendMail",
         {
@@ -158,17 +155,9 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({
             message: {
               subject,
-              body: {
-                contentType: "HTML",
-                content: html,
-              },
-              toRecipients: [
-                {
-                  emailAddress: { address: to },
-                },
-              ],
+              body: { contentType: "HTML", content: html },
+              toRecipients: [{ emailAddress: { address: to } }],
             },
-            saveToSentItems: true,
           }),
         },
       );
@@ -181,33 +170,17 @@ export async function POST(req: NextRequest) {
           { status: 500 },
         );
       }
-
-      // ⚠️ Graph sendMail doesn't return messageId directly
-      // You need /messages endpoint for that (advanced)
-      conversationId = undefined;
-      messageId = undefined;
     }
 
     /* =====================================================
-       🗄 UPDATE MONGODB STATUS + METADATA
+       🗄 UPDATE DB
     ===================================================== */
     const recording = user.recordings.id(recordingId);
-
-    if (!recording) {
-      return NextResponse.json(
-        { error: "Recording not found" },
-        { status: 404 },
-      );
-    }
-
     const now = new Date();
 
-    // 🔹 Action email
     if (type === "action" && actionItemId) {
       const email = recording.emails.find(
-        (e: any) =>
-          e.actionItemId &&
-          e.actionItemId.toString() === actionItemId.toString(),
+        (e: any) => e.actionItemId?.toString() === actionItemId.toString(),
       );
 
       if (email) {
@@ -220,23 +193,17 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 🔹 Summary email
     if (type === "summary") {
-      if (!recording.summaryEmail) recording.summaryEmail = {};
-
       recording.summaryEmail.status = "sent";
       recording.summaryEmail.sentAt = now;
       recording.summaryEmail.provider = provider;
-      recording.summaryEmail.messageId = messageId;
-      recording.summaryEmail.threadId = threadId;
-      recording.summaryEmail.conversationId = conversationId;
     }
 
     await user.save();
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("UNIFIED SEND ERROR:", error);
+    console.error("SEND ERROR:", error);
     return NextResponse.json(
       { error: "Failed to send email" },
       { status: 500 },

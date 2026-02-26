@@ -1,4 +1,7 @@
 import Sidebar from "@/app/components/Sidebar";
+import { startDevScheduler } from "@/lib/devScheduler";
+
+startDevScheduler();
 
 export default function DashboardLayout({
   children,

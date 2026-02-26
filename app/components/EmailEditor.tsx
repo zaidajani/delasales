@@ -5,6 +5,7 @@ import { Copy, Send, Save, X, Mail } from "lucide-react";
 import TipTapMail from "@/app/components/TipTapMail";
 import EmailCopilotPanel from "./EmailCopilotPanel";
 import { useMail } from "@/app/context/MailContext";
+import ScheduleModal from "@/app/components/ScheduleModal";
 
 /* ---------------------------------
    HTML → Plain text
@@ -38,12 +39,13 @@ export default function EmailEditor({
   onClose,
   onSaved,
 }: Props) {
-  /* ✅ GLOBAL MAIL STATE */
-  const { subject, body, to, status, updateMail } = useMail();
+  const { subject, body, to, status, scheduledAt, updateMail } = useMail();
 
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
+  const isScheduled = !!scheduledAt && status !== "sent";
   const isLocked = status === "sent";
 
   /* ================= COPY ================= */
@@ -82,6 +84,7 @@ export default function EmailEditor({
           to,
           subject,
           body,
+          scheduledAt, // ✅ persist schedule
         }),
       });
 
@@ -95,6 +98,36 @@ export default function EmailEditor({
       alert("Failed to save email");
     } finally {
       setSaving(false);
+    }
+  }
+
+  /* ================= SCHEDULE ================= */
+  async function handleSchedule(date: string) {
+    try {
+      const res = await fetch("/api/email/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clerkUserId,
+          recordingId,
+          actionItemId,
+          to,
+          subject,
+          html: body,
+          scheduledAt: date,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      updateMail({ scheduledAt: date });
+      alert("Email scheduled");
+      console.log("📅 Scheduling email at:", date);
+      setScheduleOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to schedule email");
     }
   }
 
@@ -124,7 +157,7 @@ export default function EmailEditor({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      updateMail({ status: "sent" });
+      updateMail({ status: "sent", scheduledAt: null }); // ✅ clear schedule
       onSaved({ subject, body, to, status: "sent" });
 
       alert("Email sent 🎉");
@@ -133,6 +166,30 @@ export default function EmailEditor({
       alert("Failed to send email");
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleCancelSchedule() {
+    try {
+      const res = await fetch("/api/email/cancel-schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recordingId,
+          actionItemId,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      // 🔄 update UI instantly
+      updateMail({ scheduledAt: null });
+
+      alert("Schedule cancelled");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to cancel schedule");
     }
   }
 
@@ -180,13 +237,32 @@ export default function EmailEditor({
 
             <button
               onClick={handleSend}
-              disabled={sending || status === "sent"}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#B7E4C7] text-green-900"
+              disabled={sending || status === "sent" || isScheduled}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl
+    ${
+      isScheduled
+        ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+        : "bg-[#B7E4C7] text-green-900 hover:bg-[#a2dec0]"
+    }`}
             >
               <Send size={16} />
               <span className="text-xs">
-                {status === "sent" ? "Sent ✓" : sending ? "Sending…" : "Send"}
+                {status === "sent"
+                  ? "Sent ✓"
+                  : isScheduled
+                    ? "Scheduled"
+                    : sending
+                      ? "Sending…"
+                      : "Send"}
               </span>
+            </button>
+
+            <button
+              onClick={() => setScheduleOpen(true)}
+              disabled={status === "sent" || !!scheduledAt}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-gray-600 bg-white hover:bg-gray-50 disabled:opacity-50"
+            >
+              <span className="text-xs">Schedule</span>
             </button>
 
             <button
@@ -201,10 +277,24 @@ export default function EmailEditor({
         <div className="mt-4 h-px bg-gray-100 w-full" />
       </div>
 
+      {/* ✅ Schedule badge — DOES NOT BREAK UI */}
+      {/* ✅ Schedule badge */}
+      {scheduledAt && status !== "sent" && (
+        <div className="px-6 py-2 text-xs text-blue-600 flex items-center justify-between">
+          <span>Scheduled for {new Date(scheduledAt).toLocaleString()}</span>
+
+          <button
+            onClick={handleCancelSchedule}
+            className="text-red-500 hover:text-red-600 font-medium"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
       {/* RECIPIENT + SUBJECT */}
       <div className="px-6 pb-2">
         <div className="grid grid-cols-2 gap-4">
-          {/* Recipient */}
           <div>
             <label className="text-[11px] text-gray-500 ml-1">RECIPIENT</label>
             <div className="relative mt-1">
@@ -222,7 +312,6 @@ export default function EmailEditor({
             </div>
           </div>
 
-          {/* Subject */}
           <div>
             <label className="text-[11px] text-gray-500 ml-1">SUBJECT</label>
             <div className="relative mt-1">
@@ -244,52 +333,34 @@ export default function EmailEditor({
 
       {/* EDITOR + COPILOT */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Editor */}
-        <div
-          className={`flex-[7] bg-[#F3F4F6] px-6 pb-6 overflow-auto mt-5 ${
-            isLocked ? "opacity-70" : ""
-          }`}
-        >
-          {" "}
+        <div className={`flex-[7] bg-[#F3F4F6] px-6 pb-6 overflow-auto mt-5`}>
           <div className="mx-auto max-w-[760px] pt-6">
             <TipTapMail
               content={body}
               editable={!isLocked}
-              onChange={(html) => {
-                if (isLocked) return; // 🔒 prevent edits when sent
-
-                // 🔄 update context (source of truth)
-                updateMail({ body: html });
-
-                // 🔄 keep parent in sync
-                onSaved({
-                  subject,
-                  body: html,
-                  to,
-                  status,
-                });
-              }}
+              onChange={(html) => updateMail({ body: html })}
             />
           </div>
         </div>
 
-        {/* Copilot */}
         <div className="flex-[3] min-w-[360px] max-w-[420px]">
           <EmailCopilotPanel
             clerkUserId={clerkUserId}
             recordingId={recordingId}
             actionItemId={actionItemId}
             emailHtml={body}
-            disabled={isLocked} // 🔒 THIS enables lock
-            onApply={(newHtml) => {
-              if (isLocked) return; // 🔒 safety guard
-              updateMail({ body: newHtml });
-              onSaved({ subject, body: newHtml, to, status });
-            }}
-            isOpen={true}
+            disabled={isLocked}
+            onApply={(html) => updateMail({ body: html })}
+            isOpen
           />
         </div>
       </div>
+
+      <ScheduleModal
+        open={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        onConfirm={handleSchedule}
+      />
     </div>
   );
 }

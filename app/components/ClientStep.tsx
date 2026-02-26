@@ -25,6 +25,7 @@ export default function ClientStep({
     body: string;
     to?: string;
     status?: "draft" | "sent";
+    scheduledAt?: string | Date | null;
   };
 }) {
   /* ---------------- State ---------------- */
@@ -38,6 +39,12 @@ export default function ClientStep({
   const [to, setTo] = useState(existingEmail?.to ?? "");
   const [status, setStatus] = useState<"draft" | "sent">(
     existingEmail?.status ?? "draft",
+  );
+
+  const [scheduledAt, setScheduledAt] = useState<string | null>(
+    existingEmail?.scheduledAt
+      ? new Date(existingEmail.scheduledAt).toISOString()
+      : null,
   );
 
   const [loading, setLoading] = useState(false);
@@ -171,6 +178,7 @@ export default function ClientStep({
                   body: email,
                   to,
                   status,
+                  scheduledAt,
                 }}
               >
                 <EmailEditor
