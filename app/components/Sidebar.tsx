@@ -131,10 +131,10 @@ export default function Sidebar() {
             onClick={() => router.push("/dashboard")}
           />
           <NavItem
-            label="Clients"
+            label="Calendar"
             icon={<Users size={18} />}
             active={isClientsActive}
-            onClick={() => router.push("/dashboard/clients")}
+            onClick={() => router.push("/dashboard/calendar")}
           />
           <NavItem
             label="Templates"
